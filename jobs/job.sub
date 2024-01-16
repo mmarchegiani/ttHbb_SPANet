@@ -1,0 +1,12 @@
+universe                = docker
+docker_image		= yuliiamaidannyk/spanet:v12
+executable              = job_script.sh
+should_transfer_files	= YES
+when_to_transfer_output = ON_EXIT
+output                  = condor_logs/output/$(ClusterId).$(ProcId).out
+error                   = condor_logs/error/$(ClusterId).$(ProcId).err
+log                     = condor_logs/log/$(ClusterId).$(ProcId).log
+request_gpus            = 1
+request_cpus		= 4
++JobFlavour		= "testmatch"
+queue 1

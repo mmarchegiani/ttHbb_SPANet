@@ -1,11 +1,11 @@
 universe                = docker
-docker_image		= yuliiamaidannyk/spanet:v12
+docker_image            = yuliiamaidannyk/spanet:v12
 executable              = job_script.sh
 should_transfer_files	= YES
 when_to_transfer_output = ON_EXIT
-output                  = condor_logs/output/$(ClusterId).$(ProcId).out
-error                   = condor_logs/error/$(ClusterId).$(ProcId).err
-log                     = condor_logs/log/$(ClusterId).$(ProcId).log
+output                  = /afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet/logs_condor/output/$(ClusterId).$(ProcId).out
+error                   = /afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet/logs_condor/error/$(ClusterId).$(ProcId).err
+log                     = /afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet/logs_condor/log/$(ClusterId).$(ProcId).log
 request_gpus            = 1
 request_cpus		= 4
 +JobFlavour		= "testmatch"

@@ -1,0 +1,39 @@
+INPUTS:
+    SEQUENTIAL:
+        Source:
+            btag: none
+            eta: normalise
+            phi: normalise
+            pt: log_normalise
+
+    GLOBAL:
+        Met:
+            eta: normalise
+            phi: normalize
+            pt: log_normalise
+        Lepton:
+            eta: normalise
+            phi: normalise
+            pt: log_normalise
+        ht:
+            ht: normalise
+EVENT:
+    t1:
+        - q1
+        - q2
+        - b
+    t2:
+        - b
+    h:
+        - b1
+        - b2
+       
+PERMUTATIONS:
+    t1:
+        - [q1, q2]
+    h:
+        - [b1, b2]
+
+REGRESSIONS:
+
+CLASSIFICATIONS:

@@ -42,3 +42,12 @@ To check that SPANet is correctly installed in the environment, run the followin
 ```bash
 python -m spanet.train --help
 ```
+
+## Dataset creation
+In order to create the `.parquet` dataset from the `.coffea` output file, one can use the following command:
+```bash
+cd ttHbb_SPANet
+python utils/dataset/coffea_to_parquet.py -i input.coffea -o output_folder
+```
+
+The script will produce an output file for each sample in the `.parquet` format, saved in the folder `output_folder`.

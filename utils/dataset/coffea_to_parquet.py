@@ -2,12 +2,16 @@ import os
 import argparse
 from collections import defaultdict
 
+import numpy as np
+import awkward as ak
+
+import vector
+vector.register_numba()
+vector.register_awkward()
+
 from coffea.util import load
 from coffea.processor.accumulator import column_accumulator
 from coffea.processor import accumulate
-
-import numpy as np
-import awkward as ak
 
 # Read arguments from command line: input file and output directory. Description: script to convert ntuples from coffea file to parquet file.
 parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
@@ -131,7 +135,10 @@ features_pad = {
 }
 
 awkward_collections = ["Parton", "PartonMatched", "JetGood", "JetGoodMatched", "LeptonParton"]
-matched_collections = ["PartonMatched", "JetGoodMatched"]
+matched_collections_dict = {
+    "Parton" : "PartonMatched",
+    "JetGood" : "JetGoodMatched"
+}
 
 samples = df["columns"].keys()
 print("Samples: ", samples)
@@ -187,16 +194,20 @@ for sample in samples:
         if collection in awkward_collections:
             zipped_dict[collection] = ak.unflatten(ak.zip(array_dict[collection], with_name='Momentum4D'), cs[f"{collection}_N"].value)
         else:
-            zipped_dict[collection] = ak.zip(array_dict[collection])
+            zipped_dict[collection] = ak.zip(array_dict[collection], with_name='Momentum4D')
         print(f"Collection: {collection}")
         print("Fields: ", zipped_dict[collection].fields)
 
-        # Flag the matched objects
-        if collection in matched_collections:
-            masked_arrays = ak.mask(zipped_dict[collection], zipped_dict[collection].pt==-999, None)
-            is_matched = ~ak.is_none(masked_arrays, axis=1)
-            zipped_dict[collection] = ak.with_field(zipped_dict[collection], is_matched, "matched")
-            if collection == "JetGoodMatched":
+    for collection in zipped_dict.keys():
+        # Pad the matched collections with None if there is no matching
+        if collection in matched_collections_dict.keys():
+            matched_collection = matched_collections_dict[collection]
+            masked_arrays = ak.mask(zipped_dict[matched_collection], zipped_dict[matched_collection].pt==-999, None)
+            zipped_dict[matched_collection] = masked_arrays
+            # Add the matched flag and the provenance to the matched jets
+            if collection == "JetGood":
+                is_matched = ~ak.is_none(masked_arrays, axis=1)
+                zipped_dict[collection] = ak.with_field(zipped_dict[collection], is_matched, "matched")
                 zipped_dict[collection] = ak.with_field(zipped_dict[collection], ak.fill_none(masked_arrays.prov, -1), "prov")
 
     # The Momentum4D arrays are zipped together to form the final dictionary of arrays.

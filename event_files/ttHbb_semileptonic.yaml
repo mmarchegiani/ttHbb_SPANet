@@ -1,21 +1,24 @@
 INPUTS:
     SEQUENTIAL:
-        Source:
-            btag: none
-            eta: normalise
-            phi: normalise
+        Jet:
             pt: log_normalise
+            eta: normalise
+            sin_phi: normalise
+            cos_phi: normalise
+            btag: none
 
     GLOBAL:
         Met:
-            eta: normalise
-            phi: normalize
             pt: log_normalise
+            eta: normalise
+            sin_phi: normalize
+            cos_phi: normalize
         Lepton:
-            eta: normalise
-            phi: normalise
             pt: log_normalise
-        ht:
+            eta: normalise
+            sin_phi: normalize
+            cos_phi: normalize
+        Event:
             ht: normalise
 EVENT:
     t1:

@@ -53,7 +53,7 @@ def create_targets(file, particle, jets):
         index_q2 = indices_prov[:,1]
 
         mask = jets.prov == 2 # t1->Wb
-        index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)
+        index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
                 
         file.create_dataset("TARGETS/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
         file.create_dataset("TARGETS/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
@@ -61,7 +61,7 @@ def create_targets(file, particle, jets):
                 
     elif particle == "t2":
         mask = jets.prov == 3 # t2->b
-        index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)
+        index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
         file.create_dataset("TARGETS/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
 
@@ -134,7 +134,7 @@ def h5_tree(val, pre=''):
 # Read arguments from command line: input file and output directory. Description: script to convert ntuples from coffea file to parquet file.
 parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
 parser.add_argument('-i', '--input', type=str, required=True, help='Input parquet file')
-parser.add_argument('-o', '--output', type=str, required=True, help='Output file')
+parser.add_argument('-o', '--output', type=str, required=True, help='Output h5 file')
 parser.add_argument('-f', '--frac_train', type=float, default=0.8, required=False, help='Fraction of events to be used for training')
 parser.add_argument('-s', '--sample', type=str, default="ttHTobb", required=False, help='Sample name')
 parser.add_argument('-fm', '--fully_matched', action='store_true', required=False, help='Use only fully matched events')

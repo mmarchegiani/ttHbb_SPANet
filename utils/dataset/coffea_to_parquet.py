@@ -16,7 +16,7 @@ from coffea.processor import accumulate
 # Read arguments from command line: input file and output directory. Description: script to convert ntuples from coffea file to parquet file.
 parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
 parser.add_argument('-i', '--input', type=str, required=True, help='Input coffea file')
-parser.add_argument('-o', '--output', type=str, required=True, help='Output directory')
+parser.add_argument('-o', '--output', type=str, required=True, help='Output parquet file')
 parser.add_argument('-c', '--cat', type=str, default="semilep_LHE", required=False, help='Event category')
 
 args = parser.parse_args()

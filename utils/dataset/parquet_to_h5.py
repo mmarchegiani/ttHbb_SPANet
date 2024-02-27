@@ -136,7 +136,6 @@ parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea 
 parser.add_argument('-i', '--input', type=str, required=True, help='Input parquet file')
 parser.add_argument('-o', '--output', type=str, required=True, help='Output h5 file')
 parser.add_argument('-f', '--frac_train', type=float, default=0.8, required=False, help='Fraction of events to be used for training')
-parser.add_argument('-s', '--sample', type=str, default="ttHTobb", required=False, help='Sample name')
 parser.add_argument('-fm', '--fully_matched', action='store_true', required=False, help='Use only fully matched events')
 
 args = parser.parse_args()
@@ -184,6 +183,8 @@ for dataset, df in df_dict.items():
 
         df = df[mask_match]
         print(f"Selected {len(df)} fully matched events")
+    else:
+        print(f"Selected {len(df)} events")
 
     output_file = args.output.replace(".h5", f"_{dataset}_{len(df)}.h5")
     print("Creating output file: ", output_file)

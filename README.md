@@ -44,6 +44,7 @@ python -m spanet.train --help
 ```
 
 ## Dataset creation
+### Coffea to Parquet conversion
 In order to create the `.parquet` dataset from the `.coffea` output file, one can use the following command:
 ```bash
 cd ttHbb_SPANet
@@ -51,3 +52,27 @@ python utils/dataset/coffea_to_parquet.py -i input.coffea -o output_folder
 ```
 
 The script will produce an output file for each sample in the `.parquet` format, saved in the folder `output_folder`.
+
+### Parquet to H5 conversion
+Once the `.parquet` file is saved, the `.h5` file in the SPANet format can be produced using the following command:
+```bash
+python utils/dataset/parquet_to_h5.py -i input.parquet -o output.h5
+```
+Additionally, one can save only ttHbb events with exactly 2 jets from the Higgs, 3 jets from the W or hadronic top, and 1 lepton from the leptonic top.
+One can specify whether the events are fully matched with the `--fully_matched` flag:
+```bash
+python utils/dataset/parquet_to_h5.py -i input.parquet -o output.h5 --fully_matched
+```
+
+## Train SPANet model for jet assignment
+In order to train the SPANet model for jet assignment, run the following command:
+```bash
+python -m spanet.train -of options_files/ttHbb_semileptonic/options_test_inclusive.json --gpus 1
+```
+
+## Compute predictions
+In order to compute the predictions from a previously trained SPANet model, one has to run the following command:
+```bash
+python -m spanet.predict $LOG_DIRECTORY predicitons.h5 -tf input.h5 --gpu
+```
+where `$LOG_DIRECTORY` is the output folder where the checkpoints of the trained SPANet model are saved, `predicitons.h5` is the customizable name of the output file containing the predictions and `input.h5` is the input `.h5` file in SPANet format. With the `--gpu` flag one can profit from the available GPUs.

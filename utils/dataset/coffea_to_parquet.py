@@ -9,15 +9,18 @@ import vector
 vector.register_numba()
 vector.register_awkward()
 
+from omegaconf import OmegaConf
+
 from coffea.util import load
 from coffea.processor.accumulator import column_accumulator
 from coffea.processor import accumulate
 
 # Read arguments from command line: input file and output directory. Description: script to convert ntuples from coffea file to parquet file.
 parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
+parser.add_argument('-c', '--cfg', type=str, required=True, help='YAML configuration file with input features and features to pad')
 parser.add_argument('-i', '--input', type=str, required=True, help='Input coffea file')
 parser.add_argument('-o', '--output', type=str, required=True, help='Output parquet file')
-parser.add_argument('-c', '--cat', type=str, default="semilep_LHE", required=False, help='Event category')
+parser.add_argument('--cat', type=str, default="semilep_LHE", required=False, help='Event category')
 
 args = parser.parse_args()
 
@@ -34,111 +37,12 @@ df = load(args.input)
 if not args.cat in df["cutflow"].keys():
     raise ValueError(f"Event category `{args.cat}` not found in the input file.")
 
-# Dictionary of features to be used for the training
-# The dictionary has two levels: the first level is common to all the samples, the second level is specific for a given sample.
-# For each of these levels, the dictionary contains the name of the collection (e.g. `JetGood`) and the features to be used for the training (e.g. `pt`, `eta`, `phi`, `mass`, `btag`).
-# For each feature, the dictionary contains the name of the feature in the coffea file (e.g. `provenance`) and the name of the feature in the parquet file (e.g. `prov`).
-
-features = {
-    "common" : {
-        "Parton" : {
-            "pt" : "pt",
-            "eta" : "eta",
-            "phi" : "phi",
-            "mass" : "mass",
-            "pdgId" : "pdgId",
-            "prov" : "provenance"
-        },
-        "PartonMatched" : {
-            "pt" : "pt",
-            "eta" : "eta",
-            "phi" : "phi",
-            "mass" : "mass",
-            "pdgId" : "pdgId",
-            "prov" : "provenance"
-        },
-        "JetGood" : {
-            "pt" : "pt",
-            "eta" : "eta",
-            "phi" : "phi",
-            "btag" : "btagDeepFlavB"
-        },
-        "JetGoodMatched" : {
-            "pt" : "pt",
-            "eta" : "eta",
-            "phi" : "phi",
-            "btag" : "btagDeepFlavB",
-            "prov" : "provenance"
-        },
-        "Generator" : {
-            "pdgid1" : "id1",
-            "pdgid2" : "id2",
-            "x1" : "x1",
-            "x2" : "x2"
-        },
-        "LeptonParton" : {
-            "pt" : "pt",
-            "eta" : "eta",
-            "phi" : "phi",
-            "mass" : "mass",
-            "pdgId" : "pdgId"
-        },
-        "LeptonGood" : {
-            "pt" : "pt",
-            "eta" : "eta",
-            "phi" : "phi",
-            "pdgId" : "pdgId"
-        },
-        "MET" : {
-            "pt" : "pt",
-            "phi" : "phi"
-        }
-    },
-    "by_sample": {
-        "ttHTobb" : {
-            "HiggsParton" : {
-                "pt" : "pt",
-                "eta" : "eta",
-                "phi" : "phi",
-                "m" : "mass"
-            }
-        },
-        "ttHTobb_ttToSemiLep" : {
-            "HiggsParton" : {
-                "pt" : "pt",
-                "eta" : "eta",
-                "phi" : "phi",
-                "m" : "mass"
-            }
-        }
-    }
-}
-
-# Dictionary of features to pad with a default value
-features_pad = {
-    "common" : {
-        "JetGood" : {
-            "m" : 0
-        },
-        "JetGoodMatched" : {
-            "m" : 0
-        },
-        "LeptonGood" : {
-            "m" : 0
-        },
-        "MET" : {
-            "m" : 0,
-            "eta" : 0
-        }
-    },
-    "by_sample": {}
-}
-
-awkward_collections = ["Parton", "PartonMatched", "JetGood", "JetGoodMatched", "LeptonParton"]
-matched_collections_dict = {
-    "Parton" : "PartonMatched",
-    "JetGood" : "JetGoodMatched"
-}
+# Load the features and features_pad dictionaries with OmegaConf
+cfg = OmegaConf.load(args.cfg)
+features = cfg["features"]
+features_pad = cfg["features_pad"]
+awkward_collections = cfg["awkward_collections"]
+matched_collections_dict = cfg["matched_collections"]
 
 samples = df["columns"].keys()
 print("Samples: ", samples)

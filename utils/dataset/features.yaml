@@ -1,0 +1,84 @@
+features:
+  common:
+    Parton:
+      pt: pt
+      eta: eta
+      phi: phi
+      mass: mass
+      pdgId: pdgId
+      prov: provenance
+    PartonMatched:
+      pt: pt
+      eta: eta
+      phi: phi
+      mass: mass
+      pdgId: pdgId
+      prov: provenance
+    JetGood:
+      pt: pt
+      eta: eta
+      phi: phi
+      btag: btagDeepFlavB
+    JetGoodMatched:
+      pt: pt
+      eta: eta
+      phi: phi
+      btag: btagDeepFlavB
+      prov: provenance
+    Generator:
+      pdgid1: id1
+      pdgid2: id2
+      x1: x1
+      x2: x2
+    LeptonParton:
+      pt: pt
+      eta: eta
+      phi: phi
+      mass: mass
+      pdgId: pdgId
+    LeptonGood:
+      pt: pt
+      eta: eta
+      phi: phi
+      pdgId: pdgId
+    MET:
+      pt: pt
+      phi: phi
+  by_sample:
+    ttHTobb:
+      HiggsParton:
+        pt: pt
+        eta: eta
+        phi: phi
+        m: mass
+    ttHTobb_ttToSemiLep:
+      HiggsParton:
+        pt: pt
+        eta: eta
+        phi: phi
+        m: mass
+
+features_pad:
+  common:
+    JetGood:
+      m: 0
+    JetGoodMatched:
+      m: 0
+    LeptonGood:
+      m: 0
+    MET:
+      m: 0
+      eta: 0
+  by_sample: {}
+
+awkward_collections:
+  - Parton
+  - PartonMatched
+  - JetGood
+  - JetGoodMatched
+  - LeptonParton
+
+matched_collections:
+  Parton: PartonMatched
+  JetGood: JetGoodMatched
+

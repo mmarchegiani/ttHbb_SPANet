@@ -11,12 +11,7 @@ import vector
 vector.register_numba()
 vector.register_awkward()
 
-input_features = {
-    "Jet" : ["MASK", "pt", "eta", "sin_phi", "cos_phi", "btag"],
-    "Lepton" : ["pt", "eta", "sin_phi", "cos_phi"],
-    "Met" : ["pt", "eta", "sin_phi", "cos_phi"],
-    "Event" : ["ht"]
-}
+from omegaconf import OmegaConf
 
 def create_groups(file):
     file.create_group("TARGETS/t1") # hadronic top -> q1 q2 b
@@ -133,28 +128,43 @@ def h5_tree(val, pre=''):
 
 # Read arguments from command line: input file and output directory. Description: script to convert ntuples from coffea file to parquet file.
 parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
-parser.add_argument('-i', '--input', type=str, required=True, help='Input parquet file')
+parser.add_argument('-c', '--cfg', type=str, required=True, help='YAML configuration file with input features')
+parser.add_argument('-i', '--input', type=str, required=True, nargs='+', help='Input parquet file')
 parser.add_argument('-o', '--output', type=str, required=True, help='Output h5 file')
 parser.add_argument('-f', '--frac_train', type=float, default=0.8, required=False, help='Fraction of events to be used for training')
 parser.add_argument('-fm', '--fully_matched', action='store_true', required=False, help='Use only fully matched events')
 
 args = parser.parse_args()
 
-## Loading the exported dataset
-# We open the .coffea file and read the output accumulator. The ntuples for the training are saved under the key `columns`.
+# Loading the config file
+cfg = OmegaConf.load(args.cfg)
+input_features = cfg["input"]
 
-if not os.path.exists(args.input):
-    raise ValueError(f"Input file {args.input} does not exist.")
+# Check if the parquet files exist
+for input_file in args.input:
+    if not os.path.exists(input_file):
+        raise ValueError(f"Input file {input_file} does not exist.")
+    if not input_file.endswith(".parquet"):
+        raise ValueError(f"Input file {input_file} should have the `.parquet` extension.")
+# Check the output file extension
 output_dir = os.path.abspath(os.path.dirname(args.output))
 filename, file_extension = os.path.splitext(args.output)
 if not file_extension == ".h5":
     raise ValueError(f"Output file {args.output} should be in .h5 format.")
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+# Check if output file exists
+if os.path.exists(args.output):
+    raise ValueError(f"Output file {args.output} already exists.")
+os.makedirs(output_dir, exist_ok=True)
 
-# Read the parquet file
-print("Reading parquet file: ", args.input)
-df_all = ak.from_parquet(args.input)
+# Read the parquet files
+print("Reading parquet files: ", args.input)
+dfs = []
+for input_file in args.input:
+    df = ak.from_parquet(input_file)
+    dfs.append(df)
+
+# Merge the dataframes into a single dataframe
+df_all = ak.concatenate(dfs)
 
 # Dictionary of train and test datasets
 

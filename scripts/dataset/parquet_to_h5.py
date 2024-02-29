@@ -73,6 +73,8 @@ def get_object_features(df, collection=None, features=["pt", "eta", "sin_phi", "
                 values = np.sin(phi)
             elif feat == "cos_phi":
                 values = np.cos(phi)
+        elif feat == "is_electron":
+            values = ak.values_astype(abs(objects["pdgId"]) == 11, int)
         else:
             values = objects[feat]
         if objects.ndim == 1:
@@ -157,9 +159,10 @@ if os.path.exists(args.output):
 os.makedirs(output_dir, exist_ok=True)
 
 # Read the parquet files
-print("Reading parquet files: ", args.input)
+print(f"Reading {len(args.input)} parquet files: ", args.input)
 dfs = []
 for input_file in args.input:
+    print("Reading file: ", input_file)
     df = ak.from_parquet(input_file)
     dfs.append(df)
 

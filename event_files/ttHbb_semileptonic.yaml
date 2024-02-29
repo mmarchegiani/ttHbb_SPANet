@@ -18,7 +18,7 @@ INPUTS:
             eta: normalize
             sin_phi: normalize
             cos_phi: normalize
-            pdgId: normalize
+            is_electron: normalize
         Event:
             ht: normalize
 EVENT:

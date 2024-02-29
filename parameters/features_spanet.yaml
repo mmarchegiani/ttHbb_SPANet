@@ -1,5 +1,5 @@
 input:
   Jet: [MASK, pt, eta, sin_phi, cos_phi, btag]
-  Lepton: [pt, eta, sin_phi, cos_phi, pdgId]
+  Lepton: [pt, eta, sin_phi, cos_phi, is_electron]
   Met: [pt, eta, sin_phi, cos_phi]
   Event: [ht]

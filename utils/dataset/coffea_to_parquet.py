@@ -29,8 +29,17 @@ args = parser.parse_args()
 
 if not os.path.exists(args.input):
     raise ValueError(f"Input file {args.input} does not exist.")
-if not os.path.exists(args.output):
-    os.makedirs(args.output)
+
+# Check if the output file is already existing
+if os.path.exists(args.output):
+    raise ValueError(f"Output file {args.output} already exists.")
+
+# Check that the format of the output file is `.parquet`
+if not args.output.endswith(".parquet"):
+    raise ValueError(f"Output file {args.output} should have the `.parquet` extension.")
+
+# Create the output directory if it does not exist
+os.makedirs(os.path.dirname(args.output), exist_ok=True)
 
 df = load(args.input)
 
@@ -117,6 +126,5 @@ for sample in samples:
     # The Momentum4D arrays are zipped together to form the final dictionary of arrays.
     print("Zipping the collections into a single dictionary...")
     df_out = ak.zip(zipped_dict, depth_limit=1)
-    filename = os.path.join(args.output, f"{sample}.parquet")
-    print(f"Saving the output dataset to file: {os.path.abspath(filename)}")
-    ak.to_parquet(df_out, filename)
+    print(f"Saving the output dataset to file: {os.path.abspath(args.output)}")
+    ak.to_parquet(df_out, args.output)

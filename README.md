@@ -67,12 +67,12 @@ python utils/dataset/parquet_to_h5.py -i input.parquet -o output.h5 --fully_matc
 ## Train SPANet model for jet assignment
 In order to train the SPANet model for jet assignment, run the following command:
 ```bash
-python -m spanet.train -of options_files/ttHbb_semileptonic/options_test_inclusive.json --gpus 1
+python -m spanet.train -of options_files/ttHbb_semileptonic/options_test_inclusive.json --log-dir spanet_output/my_model --time_limit 00:06:00:00 --gpus 1
 ```
 
 ## Compute predictions
 In order to compute the predictions from a previously trained SPANet model, one has to run the following command:
 ```bash
-python -m spanet.predict $LOG_DIRECTORY predicitons.h5 -tf input.h5 --gpu
+python -m spanet.predict spanet_output/my_model predicitons.h5 -tf input.h5 --gpu
 ```
-where `$LOG_DIRECTORY` is the output folder where the checkpoints of the trained SPANet model are saved, `predicitons.h5` is the customizable name of the output file containing the predictions and `input.h5` is the input `.h5` file in SPANet format. With the `--gpu` flag one can profit from the available GPUs.
+where `spanet_output/my_model` is the folder where the checkpoints of the trained SPANet model are saved, `predicitons.h5` is the name of the output file containing the predictions and `input.h5` is the input `.h5` test file in SPANet format. With the `--gpu` flag one can profit from the available GPUs.

@@ -102,7 +102,7 @@ for sample in samples:
     # The awkward arrays are zipped together to form the Momentum4D arrays.
     # If the collection is not a Momentum4D array, it is zipped as it is,
     # otherwise the Momentum4D arrays are zipped together and unflattened depending on the number of objects in the collection.
-    zipped_dict = {}
+    zipped_dict = defaultdict(dict)
     for collection in array_dict.keys():
         if collection in awkward_collections:
             zipped_dict[collection] = ak.unflatten(ak.zip(array_dict[collection], with_name='Momentum4D'), cs[f"{collection}_N"].value)
@@ -122,6 +122,9 @@ for sample in samples:
                 is_matched = ~ak.is_none(masked_arrays, axis=1)
                 zipped_dict[collection] = ak.with_field(zipped_dict[collection], is_matched, "matched")
                 zipped_dict[collection] = ak.with_field(zipped_dict[collection], ak.fill_none(masked_arrays.prov, -1), "prov")
+
+    # Add the remaining keys to the zipped dictionary
+    zipped_dict["event"] = ak.zip({"weight" : cs["weight"].value})
 
     # The Momentum4D arrays are zipped together to form the final dictionary of arrays.
     print("Zipping the collections into a single dictionary...")

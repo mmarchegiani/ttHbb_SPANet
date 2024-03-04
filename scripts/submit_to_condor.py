@@ -11,6 +11,9 @@ parser.add_argument("-of", "--options_file", type=str, default=None,
                     help="JSON file with option overloads.", required=True)
 parser.add_argument("-l", "--log_dir", type=str, default=None,
                     help="Output directory for the checkpoints and tensorboard logs. Default to current directory.", required=True)
+parser.add_argument("-cf", "--checkpoint", type=str, default=None,
+                    help="Optional checkpoint to load the training state from. "
+                         "Fully restores model weights and optimizer state.")
 parser.add_argument('--dry', action="store_true")
 parser.add_argument('--interactive', action="store_true")
 parser.add_argument('--ngpu', type=int, default=1)
@@ -55,7 +58,11 @@ if model == "jet_assignment":
 else:
     raise ValueError(f"Model {model} not implemented")
 
-# General
+# Load checkpoint
+if args.checkpoint:
+    sub['arguments'] += f" {args.checkpoint}"
+
+# GPU and CPU requirements
 sub['request_cpus'] = f"{args.ncpu}"
 sub['request_gpus'] = f"{args.ngpu}"
 
@@ -63,7 +70,11 @@ if args.good_gpus:
     sub['requirements'] = 'regexp("A100", TARGET.CUDADeviceName) || regexp("V100", TARGET.CUDADeviceName)'
 
 print("Submission parameters:")
-print(sub)
+print(sub, end="\n\n")
+
+print("Creating log folders...")
+for folder in ["Output", "Error", "Log"]:
+    os.makedirs(os.path.dirname(sub[folder]), exist_ok=True)
  
 if not args.dry:
     print("Starting Condor scheduler...")

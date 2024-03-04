@@ -19,12 +19,18 @@ features:
       eta: eta
       phi: phi
       btag: btagDeepFlavB
+      btag_L: btag_L
+      btag_M: btag_M
+      btag_H: btag_H
     JetGoodMatched:
       pt: pt
       eta: eta
       phi: phi
       btag: btagDeepFlavB
       prov: provenance
+      btag_L: btag_L
+      btag_M: btag_M
+      btag_H: btag_H
     Generator:
       pdgid1: id1
       pdgid2: id2

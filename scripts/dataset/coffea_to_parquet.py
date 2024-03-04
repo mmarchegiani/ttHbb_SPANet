@@ -129,5 +129,9 @@ for sample in samples:
     # The Momentum4D arrays are zipped together to form the final dictionary of arrays.
     print("Zipping the collections into a single dictionary...")
     df_out = ak.zip(zipped_dict, depth_limit=1)
-    print(f"Saving the output dataset to file: {os.path.abspath(args.output)}")
+    if len(samples) > 1:
+        output_file = args.output.replace(".parquet", f"_{sample}.parquet")
+    else:
+        output_file = args.output
+    print(f"Saving the output dataset to file: {os.path.abspath(output_file)}")
     ak.to_parquet(df_out, args.output)

@@ -50,7 +50,7 @@ if interactive:
 if model == "jet_assignment":
     sub['Executable'] = f"{basedir}/jobs/jet_assignment.sh"
     sub['arguments'] = f"{args.options_file} {args.log_dir}"
-    sub['Output'] = f"{basedir}/jobs/output/jet_assignment-$(ClusterId).$(Proc1Id).out"
+    sub['Output'] = f"{basedir}/jobs/output/jet_assignment-$(ClusterId).$(ProcId).out"
     sub['Error'] = f"{basedir}/jobs/error/jet_assignment-$(ClusterId).$(ProcId).err"
     sub['Log'] = f"{basedir}/jobs/log/jet_assignment-$(ClusterId).log"
     sub['MY.SendCredential'] = True

@@ -1,4 +1,5 @@
 path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet
 model: jet_assignment
+job_flavour: testmatch
 ngpu: 1
 ncpu: 3

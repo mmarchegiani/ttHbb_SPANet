@@ -31,6 +31,7 @@ credd.add_user_cred(htcondor.CredTypes.Kerberos, None)
 cfg = OmegaConf.load(args.cfg)
 basedir = cfg['path']
 model = cfg['model']
+job_flavour = cfg['job_flavour']
 ngpu = cfg['ngpu']
 ncpu = cfg['ncpu']
 
@@ -54,7 +55,7 @@ if model == "jet_assignment":
     sub['Log'] = f"{basedir}/jobs/log/jet_assignment-$(ClusterId).log"
     sub['MY.SendCredential'] = True
     sub['MY.SingularityImage'] = '"/cvmfs/unpacked.cern.ch/registry.hub.docker.com/cmsml/cmsml:latest"'
-    sub['+JobFlavour'] = '"nextweek"'
+    sub['+JobFlavour'] = f'"{job_flavour}"'
 else:
     raise ValueError(f"Model {model} not implemented")
 

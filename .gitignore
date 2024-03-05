@@ -5,3 +5,6 @@ spanet_output
 test_dataset
 notebooks/test
 notebooks/.ipynb_checkpoints
+jobs/error
+jobs/log
+jobs/output

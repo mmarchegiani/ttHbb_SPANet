@@ -19,13 +19,13 @@ pip install -e .
 if [ $# -eq 2 ]; then
     python -m spanet.train \
            --options_file $1 \
-           --log-dir $2\
+           --log_dir $2\
            --time_limit 02:00:00:00\
            --gpus $NUM_GPU
 elif [ $# -eq 3 ]; then
     python -m spanet.train \
            --options_file $1 \
-           --log-dir $2\
+           --log_dir $2\
            --checkpoint $3\
            --time_limit 02:00:00:00\
            --gpus $NUM_GPU

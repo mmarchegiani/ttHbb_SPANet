@@ -1,4 +1,5 @@
 #!/bin/bash
+SPANET_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/SPANet
 TTHBB_SPANET_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet
 NUM_GPU=1
 
@@ -7,6 +8,10 @@ python -m venv myenv --system-site-packages
 source myenv/bin/activate
 
 # Install SPANet in virtual environment
+cd $SPANET_DIR
+pip install -e .
+
+# Install ttHbb_SPANet in virtual environment
 cd $TTHBB_SPANET_DIR
 pip install -e .
 

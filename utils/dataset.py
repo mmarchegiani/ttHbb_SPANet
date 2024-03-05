@@ -157,11 +157,11 @@ class ParquetDataset:
                 output_file = self.output_file.replace(".parquet", f"_{sample}.parquet")
             else:
                 output_file = self.output_file
-            print(f"Saving the output dataset to file: {os.path.abspath(output_file)}")
-            ak.to_parquet(df_out, self.output_file)
+            print(f"Saving the output dataset to file: {output_file}")
+            ak.to_parquet(df_out, output_file)
 
 class H5Dataset:
-    def __init__(self, input_file, output_file, cfg, fully_matched=False):
+    def __init__(self, input_file, output_file, cfg, fully_matched=False, signal=False):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -172,6 +172,7 @@ class H5Dataset:
         self.output_file = output_file
         self.cfg = cfg
         self.fully_matched = fully_matched
+        self.signal = signal
 
         self.load_config()
         self.check_output()
@@ -303,6 +304,10 @@ class H5Dataset:
 
             features = self.input_features[obj]
             if obj == "Event":
+                if self.signal:
+                    features_dict["signal"] = ak.Array(np.ones(len(df), dtype=int))
+                else:
+                    features_dict["signal"] = ak.Array(np.zeros(len(df), dtype=int))
                 if "ht" in features:
                     features_dict["ht"] = ak.sum(df["JetGood"]["pt"], axis=1)
                 else:

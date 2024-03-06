@@ -16,6 +16,8 @@ from coffea.util import load
 from coffea.processor.accumulator import column_accumulator
 from coffea.processor import accumulate
 
+from spanet.dataset.types import SpecialKey
+
 class ParquetDataset:
     def __init__(self, input_file, output_file, cfg, cat="semilep_LHE"):
         self.input_file = input_file
@@ -161,7 +163,7 @@ class ParquetDataset:
             ak.to_parquet(df_out, output_file)
 
 class H5Dataset:
-    def __init__(self, input_file, output_file, cfg, fully_matched=False, signal=False):
+    def __init__(self, input_file, output_file, cfg, fully_matched=False, is_signal=False):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -172,7 +174,7 @@ class H5Dataset:
         self.output_file = output_file
         self.cfg = cfg
         self.fully_matched = fully_matched
-        self.signal = signal
+        self.is_signal = is_signal
 
         self.load_config()
         self.check_output()
@@ -204,6 +206,7 @@ class H5Dataset:
         self.input_features = self.cfg["input"]
         self.collection = self.cfg["collection"]
         self.targets = self.cfg["particles"]
+        self.classification_targets = self.cfg["classification"]
         self.frac_train = self.cfg["frac_train"]
 
     def check_output(self):
@@ -241,9 +244,11 @@ class H5Dataset:
     def create_groups(self):
         '''Create the groups in the h5 file.'''
         for target in self.targets:
-            self.file.create_group(f"TARGET/{target}")
+            self.file.create_group(f"{SpecialKey.Targets}/{target}")
         for object in self.input_features.keys():
-            self.file.create_group(f"INPUTS/{object}")
+            self.file.create_group(f"{SpecialKey.Inputs}/{object}")
+        for group in self.classification_targets:
+            self.file.create_group(f"{SpecialKey.Classifications}/{group}")
 
     def create_targets(self, df):
         jets = df[self.collection["Jet"]]
@@ -260,8 +265,8 @@ class H5Dataset:
                 index_b1 = indices_prov[:,0]
                 index_b2 = indices_prov[:,1]
 
-                self.file.create_dataset(f"TARGET/h/b1", np.shape(index_b1), dtype='int64', data=index_b1)
-                self.file.create_dataset(f"TARGET/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
+                self.file.create_dataset(f"{SpecialKey.Targets}/h/b1", np.shape(index_b1), dtype='int64', data=index_b1)
+                self.file.create_dataset(f"{SpecialKey.Targets}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
 
             elif target == "t1":
                 mask = jets.prov == 5 # W->q1q2 from t1
@@ -273,15 +278,32 @@ class H5Dataset:
                 mask = jets.prov == 2 # t1->Wb
                 index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
-                self.file.create_dataset(f"TARGET/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
-                self.file.create_dataset(f"TARGET/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
-                self.file.create_dataset(f"TARGET/t1/b", np.shape(index_b_hadr), dtype='int64', data=index_b_hadr)
+                self.file.create_dataset(f"{SpecialKey.Targets}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
+                self.file.create_dataset(f"{SpecialKey.Targets}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
+                self.file.create_dataset(f"{SpecialKey.Targets}/t1/b", np.shape(index_b_hadr), dtype='int64', data=index_b_hadr)
 
             elif target == "t2":
                 mask = jets.prov == 3 # t2->b
                 index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
-                self.file.create_dataset(f"TARGET/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
+                self.file.create_dataset(f"{SpecialKey.Targets}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
+
+    def create_classifications(self, df):
+        '''Create the classification targets in the h5 file.'''
+        for group, targets in self.classification_targets.items():
+            for target in targets:
+                if group == SpecialKey.Event:
+                    if target == "signal":
+                        if self.is_signal:
+                            values = np.ones(len(df))
+                        else:
+                            values = np.zeros(len(df))
+                    else:
+                        raise NotImplementedError
+                    self.file.create_dataset(f"{SpecialKey.Classifications}/{group}/{target}", np.shape(values), dtype='int64', data=values)
+                else:
+                    raise NotImplementedError
+
 
     def create_inputs(self, df):
         '''Create the input arrays in the h5 file.'''
@@ -293,21 +315,17 @@ class H5Dataset:
                     dtype = 'bool'
                 else:
                     dtype = 'float32'
-                dataset_name = f"INPUTS/{obj}/{feat}"
+                dataset_name = f"{SpecialKey.Inputs}/{obj}/{feat}"
                 print("Creating dataset: ", dataset_name)
                 ds = self.file.create_dataset(dataset_name, np.shape(val), dtype=dtype, data=val)
 
     def get_object_features(self, df):
 
         df_features = defaultdict(dict)
-        for obj, feats in self.input_features.items():
+        for obj, features in self.input_features.items():
 
-            features = self.input_features[obj]
+            features_dict = {}
             if obj == "Event":
-                if self.signal:
-                    features_dict["signal"] = ak.Array(np.ones(len(df), dtype=int))
-                else:
-                    features_dict["signal"] = ak.Array(np.zeros(len(df), dtype=int))
                 if "ht" in features:
                     features_dict["ht"] = ak.sum(df["JetGood"]["pt"], axis=1)
                 else:
@@ -317,7 +335,6 @@ class H5Dataset:
 
                 if (collection in df.fields) & (collection != "Event"):
                     objects = df[collection]
-                    features_dict = {}
                     for feat in features:
                         if feat in ["MASK", "ht"]: continue
                         if feat in ["sin_phi", "cos_phi"]:
@@ -377,6 +394,7 @@ class H5Dataset:
         self.file = h5py.File(output_file, "w")
         self.create_groups()
         self.create_targets(df)
+        self.create_classifications(df)
         self.create_inputs(df)
         print(self.file)
         self.print()

@@ -11,4 +11,8 @@ collection:
 
 particles: [t1, t2, h]
 
+classification:
+  EVENT:
+    - signal
+
 frac_train: 0.8

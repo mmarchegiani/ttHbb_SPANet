@@ -47,12 +47,12 @@ sub = htcondor.Submit()
 if interactive:
     sub['InteractiveJob'] = True
 
-if model == "jet_assignment":
-    sub['Executable'] = f"{basedir}/jobs/jet_assignment.sh"
+if model in ["jet_assignment", "classification"]:
+    sub['Executable'] = f"{basedir}/jobs/{model}.sh"
     sub['arguments'] = f"{args.options_file} {args.log_dir}"
-    sub['Output'] = f"{basedir}/jobs/output/jet_assignment-$(ClusterId).$(ProcId).out"
-    sub['Error'] = f"{basedir}/jobs/error/jet_assignment-$(ClusterId).$(ProcId).err"
-    sub['Log'] = f"{basedir}/jobs/log/jet_assignment-$(ClusterId).log"
+    sub['Output'] = f"{basedir}/jobs/output/{model}-$(ClusterId).$(ProcId).out"
+    sub['Error'] = f"{basedir}/jobs/error/{model}-$(ClusterId).$(ProcId).err"
+    sub['Log'] = f"{basedir}/jobs/log/{model}-$(ClusterId).log"
     sub['MY.SendCredential'] = True
     sub['MY.SingularityImage'] = '"/cvmfs/unpacked.cern.ch/registry.hub.docker.com/cmsml/cmsml:latest"'
     sub['+JobFlavour'] = f'"{job_flavour}"'

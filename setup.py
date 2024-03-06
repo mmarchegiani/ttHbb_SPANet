@@ -27,8 +27,7 @@ setup(
         'opt_einsum',
         'scikit-learn',
         'rich',
-        'htcondor',
-        'law'
+        'htcondor'
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',

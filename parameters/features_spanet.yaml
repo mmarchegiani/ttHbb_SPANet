@@ -3,3 +3,16 @@ input:
   Lepton: [pt, eta, sin_phi, cos_phi, is_electron]
   Met: [pt, eta, sin_phi, cos_phi]
   Event: [ht]
+
+collection:
+  Jet: JetGood
+  Lepton: LeptonGood
+  Met: MET
+
+particles: [t1, t2, h]
+
+classification:
+  EVENT:
+    - signal
+
+frac_train: 0.8

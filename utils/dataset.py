@@ -18,6 +18,11 @@ from coffea.processor import accumulate
 
 from spanet.dataset.types import SpecialKey
 
+mapping_sample = {
+    "ttHTobb": 1,
+    "TTToSemiLeptonic": 0,
+}
+
 class ParquetDataset:
     def __init__(self, input_file, output_file, cfg, cat="semilep_LHE"):
         self.input_file = input_file
@@ -163,7 +168,7 @@ class ParquetDataset:
             ak.to_parquet(df_out, output_file)
 
 class H5Dataset:
-    def __init__(self, input_file, output_file, cfg, fully_matched=False, is_signal=False):
+    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -174,13 +179,30 @@ class H5Dataset:
         self.output_file = output_file
         self.cfg = cfg
         self.fully_matched = fully_matched
-        self.is_signal = is_signal
+        self.shuffle = shuffle
+
+        self.sample_dict = defaultdict(dict)
 
         self.load_config()
         self.check_output()
         self.dataset = Dataset(self)
         if self.fully_matched:
             self.select_fully_matched()
+
+    @staticmethod
+    def get_sample_name(input_file):
+        '''Get the sample name from the input file name.'''
+        sample_list = []
+        for sample in mapping_sample.keys():
+            if sample in input_file:
+                sample_list.append(sample)
+        if len(sample_list) == 0:
+            raise ValueError(f"Sample name not found in the input file name: {input_file}.\nAvailable samples: {mapping_sample.keys()}")
+        elif len(sample_list) > 1:
+            raise ValueError(f"""Multiple sample names found in the input file name: {input_file}.
+                                A single sample name should be specified in the file name.\n
+                                Available samples: {mapping_sample.keys()}""")
+        return sample_list[0]
 
     def load_input(self):
         '''Load the input file.'''
@@ -196,9 +218,16 @@ class H5Dataset:
         for input_file in self.input_files:
             print("Reading file: ", input_file)
             df = ak.from_parquet(input_file)
+            # Get sample name from the input file name
+            df["signal"] = ak.values_astype(mapping_sample[self.get_sample_name(input_file)] * np.ones(len(df), dtype=int), int)
             dfs.append(df)
-        # Merge the dataframes into a single dataframe
-        return ak.concatenate(dfs)
+        # Return the concatenated dataframe
+        # If shuffle is True, the events are randomly shuffled
+        df_concat = ak.concatenate(dfs)
+        if self.shuffle:
+            return df_concat[np.random.permutation(len(df_concat))]
+        else:
+            return df_concat
 
     def load_config(self):
         '''Load the config file with OmegaConf and read the input features.'''
@@ -287,6 +316,8 @@ class H5Dataset:
                 index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
                 self.file.create_dataset(f"{SpecialKey.Targets}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
+            else:
+                raise NotImplementedError
 
     def create_classifications(self, df):
         '''Create the classification targets in the h5 file.'''
@@ -294,16 +325,12 @@ class H5Dataset:
             for target in targets:
                 if group == SpecialKey.Event:
                     if target == "signal":
-                        if self.is_signal:
-                            values = np.ones(len(df))
-                        else:
-                            values = np.zeros(len(df))
+                        values = df["signal"]
                     else:
                         raise NotImplementedError
                     self.file.create_dataset(f"{SpecialKey.Classifications}/{group}/{target}", np.shape(values), dtype='int64', data=values)
                 else:
                     raise NotImplementedError
-
 
     def create_inputs(self, df):
         '''Create the input arrays in the h5 file.'''

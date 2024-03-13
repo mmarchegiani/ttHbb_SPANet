@@ -68,7 +68,7 @@ sub['request_cpus'] = f"{args.ncpu}"
 sub['request_gpus'] = f"{args.ngpu}"
 
 if args.good_gpus:
-    sub['requirements'] = 'regexp("A100", TARGET.CUDADeviceName) || regexp("V100", TARGET.CUDADeviceName)'
+    sub['requirements'] = 'regexp("A100", TARGET.GPUs_DeviceName) || regexp("V100", TARGET.GPUs_DeviceName)'
 
 print("Submission parameters:")
 print(sub, end="\n\n")

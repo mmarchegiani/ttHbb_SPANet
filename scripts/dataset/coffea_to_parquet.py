@@ -1,9 +1,5 @@
 import argparse
 
-import vector
-vector.register_numba()
-vector.register_awkward()
-
 from utils.dataset import ParquetDataset
 
 # Read arguments from command line: input file and output directory. Description: script to convert ntuples from coffea file to parquet file.

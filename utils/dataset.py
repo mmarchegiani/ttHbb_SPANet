@@ -62,10 +62,12 @@ class ParquetDataset:
             return len(self.events)
 
     def get_datasets(self, sample=None):
-        if sample == None:
+        if self.schema == "coffea":
+            return list(self.columns[sample].keys())
+        elif self.schema == "parquet":
             return list(self.cutflow.keys())
         else:
-            return list(self.columns[sample].keys())
+            raise ValueError(f"Schema {self.schema} not recognized.")
 
     @property
     def samples(self):
@@ -73,10 +75,12 @@ class ParquetDataset:
             return list(self.columns.keys())
         elif self.schema == "parquet":
             samples = []
-            for dataset in self.get_datasets(sample):
-                for sample, nevt in self.cutflow[dataset].items():
-                    if nevt == self.nevents:
-                        samples.append(sample)
+            datasets = list(self.cutflow.keys())
+            assert len(datasets) == 1, "Multiple datasets found in the datasets metadata."
+            dataset = datasets[0]
+            for sample, nevt in self.cutflow[dataset].items():
+                if nevt == self.nevents:
+                    samples.append(sample)
             if len(samples) == 0:
                 raise ValueError(f"No sample found with {self.nevents} events.")
             return samples
@@ -86,6 +90,7 @@ class ParquetDataset:
         if not os.path.exists(self.input_file):
             raise ValueError(f"Input file {self.input_file} does not exist.")
         else:
+            print(f"Reading input file: {self.input_file}")
             self.df = load(self.input_file)
             self.columns = self.df["columns"]
             if not self.cat in self.df["cutflow"].keys():
@@ -95,6 +100,7 @@ class ParquetDataset:
 
         if self.input_ntuples:
             self.schema = "parquet"
+            print("Reading input ntuples: ", self.input_ntuples)
             self.events = ak.from_parquet(self.input_ntuples)
             nevents = len(self.events)
         else:

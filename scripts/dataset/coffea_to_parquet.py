@@ -12,6 +12,7 @@ parser.add_argument('-c', '--cfg', type=str, required=True, help='YAML configura
 parser.add_argument('-i', '--input', type=str, required=True, help='Input coffea file')
 parser.add_argument('-o', '--output', type=str, required=True, help='Output parquet file')
 parser.add_argument('--cat', type=str, default="semilep_LHE", required=False, help='Event category')
+parser.add_argument('-n', '--ntuples', default=None, type=str, required=False, help='Additional input parquet file with ntuples')
 
 args = parser.parse_args()
 
@@ -20,5 +21,6 @@ dataset = ParquetDataset(
     args.output,
     args.cfg,
     args.cat,
+    args.ntuples
 )
 dataset.save_parquet()

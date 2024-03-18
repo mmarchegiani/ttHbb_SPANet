@@ -1,10 +1,6 @@
 import os
+from enum import Enum
 from collections import defaultdict
-
-import numba
-import vector
-vector.register_numba()
-vector.register_awkward()
 
 import numpy as np
 import awkward as ak
@@ -16,26 +12,69 @@ from coffea.util import load
 from coffea.processor.accumulator import column_accumulator
 from coffea.processor import accumulate
 
-from spanet.dataset.types import SpecialKey
-
 mapping_sample = {
     "ttHTobb": 1,
     "TTToSemiLeptonic": 0,
 }
 
+# Inherited from https://github.com/Alexanders101/SPANet/blob/master/spanet/dataset/types.py
+class SpecialKey(str, Enum):
+    Mask = "MASK"
+    Event = "EVENT"
+    Inputs = "INPUTS"
+    Targets = "TARGETS"
+    Particle = "PARTICLE"
+    Regressions = "REGRESSIONS"
+    Permutations = "PERMUTATIONS"
+    Classifications = "CLASSIFICATIONS"
+    Embeddings = "EMBEDDINGS"
+
 class ParquetDataset:
-    def __init__(self, input_file, output_file, cfg, cat="semilep_LHE"):
+    def __init__(self, input_file, output_file, cfg, cat="semilep_LHE", input_ntuples=None):
         self.input_file = input_file
         self.output_file = output_file
         self.cfg = cfg
         self.cat = cat
+        self.input_ntuples = input_ntuples
 
-        self.load_input()
         self.load_config()
+        self.load_input()
         self.check_output()
         self.normalize_genweights()
         self.load_features()
-        self.build_arrays()
+        if self.schema == "coffea":
+            self.build_arrays_from_accumulator()
+        elif self.schema == "parquet":
+            self.build_arrays_from_ntuples()
+        else:
+            raise ValueError(f"Schema {self.schema} not recognized.")
+
+    @property
+    def nevents(self):
+        if self.schema == "coffea":
+            pass
+        elif self.schema == "parquet":
+            return len(self.events)
+
+    def get_datasets(self, sample=None):
+        if sample == None:
+            return list(self.cutflow.keys())
+        else:
+            return list(self.columns[sample].keys())
+
+    @property
+    def samples(self):
+        if self.schema == "coffea":
+            return list(self.columns.keys())
+        elif self.schema == "parquet":
+            samples = []
+            for dataset in self.get_datasets(sample):
+                for sample, nevt in self.cutflow[dataset].items():
+                    if nevt == self.nevents:
+                        samples.append(sample)
+            if len(samples) == 0:
+                raise ValueError(f"No sample found with {self.nevents} events.")
+            return samples
 
     def load_input(self):
         '''Load the input file and check if the event category `cat` is present.'''
@@ -46,12 +85,21 @@ class ParquetDataset:
             self.columns = self.df["columns"]
             if not self.cat in self.df["cutflow"].keys():
                 raise ValueError(f"Event category `{self.cat}` not found in the input file.")
-            self.samples = self.columns.keys()
-            # Build the array dictionary and the zipped dictionary for each sample
-            self.array_dict = {s : defaultdict(dict) for s in self.samples}
-            self.zipped_dict = {s : defaultdict(dict) for s in self.samples}
-            self.features_dict = {s : defaultdict(dict) for s in self.samples}
-            self.features_pad_dict = {s : defaultdict(dict) for s in self.samples}
+            self.sum_genweights = self.df["sum_genweights"]
+            self.cutflow = self.df["cutflow"][self.cat]
+
+        if self.input_ntuples:
+            self.schema = "parquet"
+            self.events = ak.from_parquet(self.input_ntuples)
+            nevents = len(self.events)
+        else:
+            self.schema = "coffea"
+
+        # Build the array dictionary and the zipped dictionary for each sample
+        self.array_dict = {s : defaultdict(dict) for s in self.samples}
+        self.zipped_dict = {s : defaultdict(dict) for s in self.samples}
+        self.features_dict = {s : defaultdict(dict) for s in self.samples}
+        self.features_pad_dict = {s : defaultdict(dict) for s in self.samples}
 
     def load_config(self):
         '''Load the features, features_pad, awkward_collections and matched_collections_dict
@@ -70,18 +118,28 @@ class ParquetDataset:
         if not self.output_file.endswith(".parquet"):
             raise ValueError(f"Output file {self.output_file} should have the `.parquet` extension.")
         # Create the output directory if it does not exist
-        os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(self.output_file)), exist_ok=True)
+
+    def get_weight(self, sample, dataset):
+        if self.schema == "coffea":
+            weight = self.columns[sample][dataset][self.cat]["weight"].value
+        elif self.schema == "parquet":
+            weight = self.events.weight
+        return weight
 
     def normalize_genweights(self):
         '''Since the array `weight` is filled on the fly with the weight associated with the event, 
         it does not take into account the overall scaling by the sum of genweights (`sum_genweights`).
         In order to correct for this, we have to scale by hand the `weight` array dividing by the sum of genweights.'''
+
         for sample in self.samples:
-            datasets = self.columns[sample].keys()
-            for dataset in datasets:
-                weight = self.columns[sample][dataset][self.cat]["weight"].value
-                weight_new = column_accumulator(weight / self.df["sum_genweights"][dataset])
-                self.columns[sample][dataset][self.cat]["weight"] = weight_new
+            for dataset in self.get_datasets(sample):
+                weight = self.get_weight(sample, dataset)
+                if self.schema == "coffea":
+                    weight_new = column_accumulator(weight / self.sum_genweights[dataset])
+                    self.columns[sample][dataset][self.cat]["weight"] = weight_new
+                elif self.schema == "parquet":
+                    self.events.weight = weight / self.sum_genweights[dataset]
 
     def load_features(self):
         '''Load the features dictionary with common features and sample-specific features.'''
@@ -101,13 +159,56 @@ class ParquetDataset:
             # Create a default dictionary of dictionaries to store the arrays
             self.array_dict[sample] = {k : defaultdict(dict) for k in self.features_dict[sample].keys()}
 
-    def build_arrays(self):
+    def build_arrays_from_ntuples(self):
+        '''Build the Momentum4D arrays for the jets, partons, leptons, met and higgs, reading from unflattened ntuples.'''
+
+        print("Samples: ", self.samples)
+
+        for sample in self.samples:
+
+            # Build the array_dict from the unflattened ntuples read from parquet
+            for collection, variable in self.features_dict[sample].items():
+                for key_feature, key_coffea in variable.items():
+                    if (collection == "JetGoodMatched") & (key_coffea == "provenance"):
+                        self.array_dict[sample][collection][key_feature] = self.events[f"PartonMatched_{key_coffea}"]
+                    else:
+                        self.array_dict[sample][collection][key_feature] = self.events[f"{collection}_{key_coffea}"]
+
+                # Add padded features to the array, according to the features dictionary
+                if collection in self.features_pad_dict[sample].keys():
+                    for key_feature, value in self.features_pad_dict[sample][collection].items():
+                        self.array_dict[sample][collection][key_feature] = value * ak.ones_like(self.events[f"{collection}_pt"])
+
+            # The awkward arrays are zipped together to form the Momentum4D arrays.
+            # If the collection is not a Momentum4D array, it is zipped as it is.
+            # Here we assume that the ntuples are unflattened, therefore we don't need to unflatten them before zipping.
+            for collection in self.array_dict[sample].keys():
+                self.zipped_dict[sample][collection] = ak.zip(self.array_dict[sample][collection], with_name='Momentum4D')
+                print(f"Collection: {collection}")
+                print("Fields: ", self.zipped_dict[sample][collection].fields)
+
+            for collection in self.zipped_dict[sample].keys():
+                # Pad the matched collections with None if there is no matching
+                if collection in self.matched_collections_dict.keys():
+                    matched_collection = self.matched_collections_dict[collection]
+                    masked_arrays = ak.mask(self.zipped_dict[sample][matched_collection], self.zipped_dict[sample][matched_collection].pt==-999, None)
+                    self.zipped_dict[sample][matched_collection] = masked_arrays
+                    # Add the matched flag and the provenance to the matched jets
+                    if collection == "JetGood":
+                        is_matched = ~ak.is_none(masked_arrays, axis=1)
+                        self.zipped_dict[sample][collection] = ak.with_field(self.zipped_dict[sample][collection], is_matched, "matched")
+                        self.zipped_dict[sample][collection] = ak.with_field(self.zipped_dict[sample][collection], ak.fill_none(masked_arrays.prov, -1), "prov")
+
+            # Add the remaining keys to the zipped dictionary
+            self.zipped_dict[sample]["event"] = ak.zip({"weight" : self.events.weight})
+
+    def build_arrays_from_accumulator(self):
         '''Build the Momentum4D arrays for the jets, partons, leptons, met and higgs.'''
         
         print("Samples: ", self.samples)
 
         for sample in self.samples:
-            datasets = self.columns[sample].keys()
+            datasets = self.get_datasets(sample)
             print("Datasets: ", datasets)
 
             # Accumulate ntuples from different data-taking eras

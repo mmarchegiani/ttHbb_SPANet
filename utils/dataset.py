@@ -2,6 +2,11 @@ import os
 from enum import Enum
 from collections import defaultdict
 
+import numba
+import vector
+vector.register_awkward()
+vector.register_numba()
+
 import numpy as np
 import awkward as ak
 import h5py

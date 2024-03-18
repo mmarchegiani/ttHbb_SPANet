@@ -1,9 +1,5 @@
 import argparse
 
-import vector
-vector.register_numba()
-vector.register_awkward()
-
 from utils.dataset import H5Dataset
 
 if __name__ == '__main__':

@@ -16,7 +16,6 @@ setup(
     url="https://github.com/mmarchegiani/ttHbb_SPANet",
     #license="BSD-3-Clause",
     install_requires=[
-        'coffea==0.7.22',
         'h5py>=3.9',
         'vector',
         'omegaconf'

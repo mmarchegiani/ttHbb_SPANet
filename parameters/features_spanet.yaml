@@ -11,8 +11,17 @@ collection:
 
 particles: [t1, t2, h]
 
+mapping_sample:
+  ttHTobb: tthbb
+  tt+B: ttbb
+  tt+C: ttcc
+  tt+LF: ttlf
+
 classification:
   EVENT:
-    - signal
+    - tthbb
+    - ttbb
+    - ttcc
+    - ttlf
 
 frac_train: 0.8

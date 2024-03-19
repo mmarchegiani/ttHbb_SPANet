@@ -6,7 +6,8 @@ import law
 
 law.contrib.load("tasks")  # to have the RunOnceTask
 
-from utils.dataset import ParquetDataset
+from utils.dataset.parquet import ParquetDataset
+from utils.dataset.h5 import H5Dataset
 
 class CoffeaToParquet(law.Task):
 
@@ -14,19 +15,8 @@ class CoffeaToParquet(law.Task):
     input_file = luigi.Parameter(description="Input Coffea file")
     output_file = luigi.Parameter(description="Output parquet file")
     cat = luigi.Parameter(default="semilep_LHE", description="Event category")
-
-    def read_datasets_definition(self):
-        with open(os.path.abspath(self.datasets_definition), "r") as f:
-            return json.load(f)
-    
+ 
     def output(self):
-        datasets = self.read_datasets_definition()
-        dataset_paths = set()
-        for dataset in datasets.values():
-            filepath = os.path.abspath(f"{dataset['json_output']}")
-            dataset_paths.add(filepath)
-            dataset_paths.add(f"{filepath}".replace(".json", "_redirector.json"))
-            
         return law.LocalFileTarget(self.output_file)
     
     def run(self):
@@ -40,10 +30,11 @@ class CoffeaToParquet(law.Task):
 
 class ParquetToH5(TaskBase):
 
-    cfg = luigi.Parameter(description="YAML configuration file with input features and features to pad")
-    input_file = luigi.Parameter(description="Input Coffea file")
-    output_file = luigi.Parameter(description="Output parquet file")
+    cfg = luigi.Parameter(description="YAML configuration file with input features targets and output nodes to save in the h5 file")
+    input_file = luigi.Parameter(description="Input parquet file")
+    output_file = luigi.Parameter(description="Output h5 file")
     fully_matched = luigi.BoolParameter(default=False, description="Consider only fully matched events")
+    no_shuffle = luigi.BoolParameter(default=False, description="If set, do not shuffle the dataset")
 
     def requires(self):
         return CoffeaToParquet.req(self)
@@ -52,5 +43,12 @@ class ParquetToH5(TaskBase):
         return law.LocalFileTarget(self.output_file)
 
     def run(self):
-        pass
+        dataset = H5Dataset(
+            self.input_file,
+            self.output_file,
+            self.cfg,
+            self.fully_matched,
+            (not self.no_shuffle)
+        )
+        dataset.save_h5_all()
         

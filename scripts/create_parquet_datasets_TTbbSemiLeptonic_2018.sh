@@ -1,0 +1,1 @@
+python scripts/dataset/coffea_to_parquet.py --cfg parameters/features.yaml -i /eos/user/m/mmarcheg/ttHbb/training_datasets/2018/output_TTbbSemiLeptonic_4f_2018.coffea -o /eos/user/m/mmarcheg/ttHbb/training_datasets/2018/output_TTbbSemiLeptonic_2018.parquet

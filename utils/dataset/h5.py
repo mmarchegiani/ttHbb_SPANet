@@ -24,6 +24,7 @@ class SpecialKey(str, Enum):
     Permutations = "PERMUTATIONS"
     Classifications = "CLASSIFICATIONS"
     Embeddings = "EMBEDDINGS"
+    Weights = "WEIGHTS"
 
 class H5Dataset:
     def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True):
@@ -199,6 +200,11 @@ class H5Dataset:
                 else:
                     raise NotImplementedError
 
+    def create_weights(self, df):
+        '''Create the weights in the h5 file.'''
+        weights = df.event.weight
+        self.file.create_dataset(f"{SpecialKey.Weights}/weight", np.shape(weights), dtype='float32', data=weights)
+
     def create_inputs(self, df):
         '''Create the input arrays in the h5 file.'''
         features = self.get_object_features(df)
@@ -290,6 +296,7 @@ class H5Dataset:
         self.create_targets(df)
         self.create_classifications(df)
         self.create_inputs(df)
+        self.create_weights(df)
         print(self.file)
         self.print()
         self.file.close()

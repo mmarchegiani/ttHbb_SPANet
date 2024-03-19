@@ -1,6 +1,6 @@
 import argparse
 
-from utils.dataset import H5Dataset
+from utils.dataset.h5 import H5Dataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
@@ -9,7 +9,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', type=str, required=True, help='Output h5 file')
     parser.add_argument('--signal', action='store_true', help='Label signal events')
     parser.add_argument('-fm', '--fully_matched', action='store_true', help='Use only fully matched events')
-    parser.add_argument('--shuffle', action='store_true', help='Shuffle the events in the output file')
+    parser.add_argument('--no_shuffle', action='store_true', help='If set, do not shuffle the dataset')
 
     args = parser.parse_args()
 
@@ -18,6 +18,6 @@ if __name__ == '__main__':
         args.output,
         args.cfg,
         args.fully_matched,
-        args.shuffle
+        (not args.no_shuffle)
     )
     dataset.save_h5_all()

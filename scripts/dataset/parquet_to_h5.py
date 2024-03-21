@@ -10,6 +10,7 @@ if __name__ == '__main__':
     parser.add_argument('--signal', action='store_true', help='Label signal events')
     parser.add_argument('-fm', '--fully_matched', action='store_true', help='Use only fully matched events')
     parser.add_argument('--no_shuffle', action='store_true', help='If set, do not shuffle the dataset')
+    parser.add_argument('--reweigh', action='store_true', help='If set, scale event weights by a factor as specified in the configuration file')
 
     args = parser.parse_args()
 
@@ -18,6 +19,7 @@ if __name__ == '__main__':
         args.output,
         args.cfg,
         args.fully_matched,
-        (not args.no_shuffle)
+        (not args.no_shuffle),
+        args.reweigh
     )
     dataset.save_h5_all()

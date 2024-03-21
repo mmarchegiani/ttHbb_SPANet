@@ -27,7 +27,7 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class H5Dataset:
-    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True):
+    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True, reweigh=False):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -39,6 +39,7 @@ class H5Dataset:
         self.cfg = cfg
         self.fully_matched = fully_matched
         self.shuffle = shuffle
+        self.reweigh = reweigh
 
         self.sample_dict = defaultdict(dict)
 
@@ -71,6 +72,13 @@ class H5Dataset:
                 df[label] = ak.values_astype(np.zeros(len(df), dtype=int), int)
         return df
 
+    def scale_weights(self, df, sample):
+        '''Scale the event weights by a factor as specified in the configuration file.'''
+        for s, factor in self.weights_scale.items():
+            if s == sample:
+                df["event"]["weight"] *= factor
+        return df
+
     def load_input(self):
         '''Load the input file.'''
         # Check if the parquet files exist
@@ -85,6 +93,9 @@ class H5Dataset:
         for input_file in self.input_files:
             print("Reading file: ", input_file)
             df = ak.from_parquet(input_file)
+            # Reweigh the events by a factor
+            if self.reweigh:
+                df = self.scale_weights(df, self.get_sample_name(input_file))
             # Get sample name from the input file name
             df = self.build_labels(df, self.get_sample_name(input_file))
             dfs.append(df)
@@ -105,6 +116,7 @@ class H5Dataset:
         self.classification_targets = self.cfg["classification"]
         self.frac_train = self.cfg["frac_train"]
         self.mapping_sample = self.cfg["mapping_sample"]
+        self.weights_scale = self.cfg["weights_scale"]
 
     def check_output(self):
         '''Check the output file extension and if it already exists.'''

@@ -18,7 +18,8 @@ setup(
     install_requires=[
         'h5py>=3.9',
         'vector',
-        'omegaconf'
+        'omegaconf',
+        'scikit-learn'
     ],
     classifiers=[
         'Development Status :: 1 - Planning',

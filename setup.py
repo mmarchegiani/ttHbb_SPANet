@@ -14,7 +14,7 @@ setup(
     author="Matteo Marchegiani",
     author_email="matteo.marchegiani@cern.ch",
     url="https://github.com/mmarchegiani/ttHbb_SPANet",
-    #license="BSD-3-Clause",
+    license="BSD-3-Clause",
     install_requires=[
         'h5py>=3.9',
         'vector',

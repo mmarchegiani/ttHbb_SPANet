@@ -7,10 +7,10 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--cfg', type=str, required=True, help='YAML configuration file with input features')
     parser.add_argument('-i', '--input', type=str, required=True, nargs='+', help='Input parquet file')
     parser.add_argument('-o', '--output', type=str, required=True, help='Output h5 file')
-    parser.add_argument('--signal', action='store_true', help='Label signal events')
     parser.add_argument('-fm', '--fully_matched', action='store_true', help='Use only fully matched events')
     parser.add_argument('--no_shuffle', action='store_true', help='If set, do not shuffle the dataset')
     parser.add_argument('--reweigh', action='store_true', help='If set, scale event weights by a factor as specified in the configuration file')
+    parser.add_argument('--entrystop', type=int, default=None, required=False, help='Number of events to process')
 
     args = parser.parse_args()
 
@@ -20,6 +20,7 @@ if __name__ == '__main__':
         args.cfg,
         args.fully_matched,
         (not args.no_shuffle),
-        args.reweigh
+        args.reweigh,
+        args.entrystop
     )
     dataset.save_h5_all()

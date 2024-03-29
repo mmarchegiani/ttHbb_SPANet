@@ -27,7 +27,7 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class H5Dataset:
-    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True, reweigh=False):
+    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True, reweigh=False, entrystop=None):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -40,6 +40,7 @@ class H5Dataset:
         self.fully_matched = fully_matched
         self.shuffle = shuffle
         self.reweigh = reweigh
+        self.entrystop = entrystop
 
         self.sample_dict = defaultdict(dict)
 
@@ -103,9 +104,10 @@ class H5Dataset:
         # If shuffle is True, the events are randomly shuffled
         df_concat = ak.concatenate(dfs)
         if self.shuffle:
-            return df_concat[np.random.permutation(len(df_concat))]
-        else:
-            return df_concat
+            df_concat = df_concat[np.random.permutation(len(df_concat))]
+        if self.entrystop:
+            df_concat = df_concat[:self.entrystop]
+        return df_concat
 
     def load_config(self):
         '''Load the config file with OmegaConf and read the input features.'''

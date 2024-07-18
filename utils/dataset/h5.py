@@ -75,9 +75,11 @@ class H5Dataset:
 
     def scale_weights(self, df, sample):
         '''Scale the event weights by a factor as specified in the configuration file.'''
+        if sample not in self.weights_scale.keys():
+            raise ValueError(f"Sample {sample} not found in the weights_scale dictionary.")
         for s, factor in self.weights_scale.items():
             if s == sample:
-                df["event"]["weight"] *= factor
+                df["event"]["weight"] = factor * df["event"]["weight"]
         return df
 
     def load_input(self):
@@ -118,7 +120,8 @@ class H5Dataset:
         self.classification_targets = self.cfg["classification"]
         self.frac_train = self.cfg["frac_train"]
         self.mapping_sample = self.cfg["mapping_sample"]
-        self.weights_scale = self.cfg["weights_scale"]
+        if "weights_scale" in self.cfg:
+            self.weights_scale = self.cfg["weights_scale"]
 
     def check_output(self):
         '''Check the output file extension and if it already exists.'''

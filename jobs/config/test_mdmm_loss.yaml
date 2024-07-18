@@ -1,0 +1,5 @@
+path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet
+model: test_mdmm_loss
+job_flavour: microcentury
+ngpu: 1
+ncpu: 3

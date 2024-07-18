@@ -19,7 +19,8 @@ setup(
         'h5py>=3.9',
         'vector',
         'omegaconf',
-        'scikit-learn'
+        'scikit-learn',
+        'htcondor'
     ],
     classifiers=[
         'Development Status :: 1 - Planning',

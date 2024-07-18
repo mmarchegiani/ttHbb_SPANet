@@ -1,0 +1,5 @@
+python scripts/submit_to_condor.py --cfg jobs/config/classification_300epochs.yaml -of options_files/ttHbb_semileptonic/classifier/options_multiclassifier_full_Run2.json -l /eos/user/m/mmarcheg/ttHbb/models/multiclassifier_full_Run2_no_weights
+python scripts/submit_to_condor.py --cfg jobs/config/classification_300epochs.yaml -of options_files/ttHbb_semileptonic/classifier/options_multiclassifier_full_Run2_btag_LMH.json -l /eos/user/m/mmarcheg/ttHbb/models/multiclassifier_full_Run2_btag_LMH_no_weights
+
+#python scripts/submit_to_condor.py --cfg jobs/config/classification_balance_weights.yaml -of options_files/ttHbb_semileptonic/classifier/options_multiclassifier_full_Run2_tthbb_balanced.json -l /eos/user/m/mmarcheg/ttHbb/models/multiclassifier_full_Run2
+#python scripts/submit_to_condor.py --cfg jobs/config/classification_balance_weights.yaml -of options_files/ttHbb_semileptonic/classifier/options_multiclassifier_full_Run2_tthbb_balanced_btag_LMH.json -l /eos/user/m/mmarcheg/ttHbb/models/multiclassifier_full_Run2_btag_LMH

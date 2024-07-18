@@ -57,11 +57,10 @@ class ParquetDataset:
         elif self.schema == "parquet":
             samples = []
             datasets = list(self.cutflow.keys())
-            assert len(datasets) == 1, "Multiple datasets found in the datasets metadata."
-            dataset = datasets[0]
-            for sample, nevt in self.cutflow[dataset].items():
-                if nevt == self.nevents:
-                    samples.append(sample)
+            for dataset in datasets:
+                for sample, nevt in self.cutflow[dataset].items():
+                    if nevt == self.nevents:
+                        samples.append(sample)
             if len(samples) == 0:
                 raise ValueError(f"No sample found with {self.nevents} events.")
             return samples
@@ -83,7 +82,7 @@ class ParquetDataset:
             self.schema = "parquet"
             print("Reading input ntuples: ", self.input_ntuples)
             self.events = ak.from_parquet(self.input_ntuples)
-            nevents = len(self.events)
+            nevents = self.nevents
             print(f"Number of events: {nevents}")
         else:
             self.schema = "coffea"
@@ -176,7 +175,10 @@ class ParquetDataset:
             for collection, variable in self.features_dict[sample].items():
                 for key_feature, key_coffea in variable.items():
                     if (collection == "JetGoodMatched") & (key_coffea == "provenance"):
-                        self.array_dict[sample][collection][key_feature] = self.events[f"PartonMatched_{key_coffea}"]
+                        try:
+                            self.array_dict[sample][collection][key_feature] = self.events[f"JetGoodMatched_provenance"]
+                        except:
+                            self.array_dict[sample][collection][key_feature] = self.events[f"PartonMatched_provenance"]
                     else:
                         values = self.events[f"{collection}_{key_coffea}"]
                         if (collection not in self.awkward_collections) & (values.ndim > 1):

@@ -48,7 +48,7 @@ python -m spanet.train --help
 In order to create the `.parquet` dataset from the `.coffea` output file, one can use the following command:
 ```bash
 cd ttHbb_SPANet
-python utils/dataset/coffea_to_parquet.py -i input.coffea -o output_folder
+python scripts/dataset/coffea_to_parquet.py -i input.coffea -o output_folder
 ```
 
 The script will produce an output file for each sample in the `.parquet` format, saved in the folder `output_folder`.
@@ -56,12 +56,13 @@ The script will produce an output file for each sample in the `.parquet` format,
 ### Parquet to H5 conversion
 Once the `.parquet` file is saved, the `.h5` file in the SPANet format can be produced using the following command:
 ```bash
-python utils/dataset/parquet_to_h5.py -i input.parquet -o output.h5
+python scripts/dataset/parquet_to_h5.py --cfg parameters/features_spanet.yaml -i input.parquet -o output.h5
 ```
+where the `parameters/features_spanet.yaml` is a `.yaml` file containing information on the collections and variables to save, the assignment and classification targets, and optionally factors to scale the event weights of each sample.
 Additionally, one can save only ttHbb events with exactly 2 jets from the Higgs, 3 jets from the W or hadronic top, and 1 lepton from the leptonic top.
 One can specify whether the events are fully matched with the `--fully_matched` flag:
 ```bash
-python utils/dataset/parquet_to_h5.py -i input.parquet -o output.h5 --fully_matched
+python scripts/dataset/parquet_to_h5.py --cfg parameters/features_spanet.yaml -i input.parquet -o output.h5 --fully_matched
 ```
 
 ## Train SPANet model for jet assignment

@@ -1,7 +1,7 @@
 input:
-  Jet: [MASK, pt, eta, sin_phi, cos_phi, btag, btag_L, btag_M, btag_H]
-  Lepton: [pt, eta, sin_phi, cos_phi, is_electron]
-  Met: [pt, eta, sin_phi, cos_phi]
+  Jet: [MASK, pt, eta, phi, sin_phi, cos_phi, btag, btag_L, btag_M, btag_H]
+  Lepton: [pt, eta, phi, sin_phi, cos_phi, is_electron]
+  Met: [pt, eta, phi, sin_phi, cos_phi]
   Event: [ht]
 
 collection:
@@ -27,7 +27,7 @@ classification:
 frac_train: 0.8
 
 weights_scale:
-  tthbb: 1.0
-  ttbb: 0.7422
-  ttcc: 1.0
-  ttlf: 1.0
+  ttHTobb: 1.0
+  tt+B: 0.7422
+  tt+C: 1.0
+  tt+LF: 1.0

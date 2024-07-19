@@ -10,7 +10,7 @@ do
         "/eos/user/m/mmarcheg/ttHbb/training_datasets/${year}/output_TTToSemiLeptonic_${year}_TTToSemiLeptonic__TTToSemiLeptonic_tt+C.parquet"
         "/eos/user/m/mmarcheg/ttHbb/training_datasets/${year}/output_TTToSemiLeptonic_${year}_TTToSemiLeptonic__TTToSemiLeptonic_tt+LF.parquet"
     )
-    output_file="/eos/user/m/mmarcheg/ttHbb/training_datasets/classifier/multiclassifier_full_Run2_byyear/tthbb_ttbar_with_ttbb_merging_tthbb_balanced_${year}.h5"
-    command="python scripts/dataset/parquet_to_h5.py --cfg parameters/features_spanet_ttbb_balance_tthbb.yaml -i ${input_files[*]} -o $output_file"
-    echo "$command"
+    output_file="/eos/user/m/mmarcheg/ttHbb/training_datasets/classifier/multiclassifier_full_Run2_ttbb_reweighed/tthbb_ttbar_with_ttbb_merging_ttbb_reweighed_${year}.h5"
+    command="python scripts/dataset/parquet_to_h5.py --cfg parameters/features_spanet_ttbb.yaml -i ${input_files[*]} -o $output_file"
+    $command
 done

@@ -27,7 +27,7 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class H5Dataset:
-    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True, reweigh=False, entrystop=None):
+    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True, reweigh=False, entrystop=None, has_data=False):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -41,6 +41,7 @@ class H5Dataset:
         self.shuffle = shuffle
         self.reweigh = reweigh
         self.entrystop = entrystop
+        self.has_data = has_data
 
         self.sample_dict = defaultdict(dict)
 
@@ -103,6 +104,8 @@ class H5Dataset:
             # Reweigh the events by a factor
             if self.reweigh:
                 df = self.scale_weights(df, self.get_sample_name(input_file))
+            if self.has_data & (not "event" in df.fields):
+                df["event"] = ak.zip({"weight": np.ones(len(df), dtype=np.float)})
             # Get sample name from the input file name
             df = self.build_labels(df, self.get_sample_name(input_file))
             dfs.append(df)
@@ -228,6 +231,7 @@ class H5Dataset:
     def create_weights(self, df):
         '''Create the weights in the h5 file.'''
         weights = df.event.weight
+        print("Creating dataset: ", f"{SpecialKey.Weights}/weight")
         self.file.create_dataset(f"{SpecialKey.Weights}/weight", np.shape(weights), dtype='float32', data=weights)
 
     def create_inputs(self, df):
@@ -250,39 +254,37 @@ class H5Dataset:
         for obj, features in self.input_features.items():
 
             features_dict = {}
-            if obj == "Event":
-                if "ht" in features:
-                    features_dict["ht"] = ak.sum(df["JetGood"]["pt"], axis=1)
-                else:
-                    raise NotImplementedError
-            else:
-                collection = self.collection[obj]
+            collection = self.collection[obj]
 
-                if (collection in df.fields) & (collection != "Event"):
-                    objects = df[collection]
-                    for feat in features:
-                        if feat in ["MASK", "ht"]: continue
-                        if feat in ["sin_phi", "cos_phi"]:
-                            phi = objects["phi"]
-                            if feat == "sin_phi":
-                                values = np.sin(phi)
-                            elif feat == "cos_phi":
-                                values = np.cos(phi)
-                        elif feat == "is_electron":
-                            values = ak.values_astype(abs(objects["pdgId"]) == 11, int)
-                        else:
-                            values = objects[feat]
-                        if objects.ndim == 1:
-                            features_dict[feat] = ak.to_numpy(values)
-                        elif objects.ndim == 2:
-                            features_dict[feat] = ak.to_numpy(ak.fill_none(ak.pad_none(values, 16, clip=True), 0))
-                        else:
-                            raise NotImplementedError
+            if (collection in df.fields) & (collection != "Event"):
+                objects = df[collection]
+                for feat in features:
+                    if feat in ["MASK", "ht"]: continue
+                    if feat in ["sin_phi", "cos_phi"]:
+                        phi = objects["phi"]
+                        if feat == "sin_phi":
+                            values = np.sin(phi)
+                        elif feat == "cos_phi":
+                            values = np.cos(phi)
+                    elif feat == "is_electron":
+                        values = ak.values_astype(abs(objects["pdgId"]) == 11, int)
+                    else:
+                        values = objects[feat]
+                    if objects.ndim == 1:
+                        features_dict[feat] = ak.to_numpy(values)
+                    elif objects.ndim == 2:
+                        features_dict[feat] = ak.to_numpy(ak.fill_none(ak.pad_none(values, 16, clip=True), 0))
+                    else:
+                        raise NotImplementedError
 
-                    if "MASK" in features:
-                        if not "pt" in features:
-                            raise NotImplementedError
-                        features_dict["MASK"] = ~(features_dict["pt"] == 0)
+                if "MASK" in features:
+                    if not "pt" in features:
+                        raise NotImplementedError
+                    features_dict["MASK"] = ~(features_dict["pt"] == 0)
+            elif collection == "Event":
+                for feat in features:
+                    values = df[feat]
+                    features_dict[feat] = ak.to_numpy(values)
             df_features[obj] = features_dict
         return df_features
 
@@ -318,7 +320,8 @@ class H5Dataset:
         print("Creating output file: ", output_file)
         self.file = h5py.File(output_file, "w")
         self.create_groups()
-        self.create_targets(df)
+        if not self.has_data:
+            self.create_targets(df)
         self.create_classifications(df)
         self.create_inputs(df)
         self.create_weights(df)

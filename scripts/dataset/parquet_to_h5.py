@@ -11,6 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_shuffle', action='store_true', help='If set, do not shuffle the dataset')
     parser.add_argument('--reweigh', action='store_true', help='If set, scale event weights by a factor as specified in the configuration file')
     parser.add_argument('--entrystop', type=int, default=None, required=False, help='Number of events to process')
+    parser.add_argument('--data', action='store_true', help='Flag to indicate that the input contains data events')
 
     args = parser.parse_args()
 
@@ -21,6 +22,7 @@ if __name__ == '__main__':
         args.fully_matched,
         (not args.no_shuffle),
         args.reweigh,
-        args.entrystop
+        args.entrystop,
+        args.data
     )
     dataset.save_h5_all()

@@ -1,0 +1,46 @@
+input:
+  Jet: [MASK, pt, eta, phi, sin_phi, cos_phi, btag, btag_L, btag_M, btag_H]
+  Lepton: [pt, eta, phi, sin_phi, cos_phi, is_electron]
+  Met: [pt, eta, phi, sin_phi, cos_phi]
+  Event: [jets_ht, bjets_ht, lightjets_ht, drbb_min, detabb_min, dphibb_min, drbb_avg, mbb_closest, mbb_min, mbb_max]
+
+collection:
+  Jet: JetGood
+  Lepton: LeptonGood
+  Met: MET
+  Event: events
+
+particles: [t1, t2, h]
+
+mapping_sample:
+  ttHTobb: tthbb
+  tt+B: ttbb
+  tt+C: ttcc
+  tt+LF: ttlf
+  TTTo2L2Nu: tt2l2nu
+  DATA: data
+
+one_hot_encoding: false
+signal_label: signal
+mapping_encoding:
+  ttHTobb: 1
+  tt+B: 2
+  tt+C: 3
+  tt+LF: 4
+
+classification:
+  EVENT:
+    - tthbb
+    - ttbb
+    - ttcc
+    - ttlf
+    - tt2l2nu
+    - data
+
+frac_train: 1.0
+
+weights_scale:
+  ttHTobb: 1.0
+  tt+B: 0.7422
+  tt+C: 1.0
+  tt+LF: 1.0

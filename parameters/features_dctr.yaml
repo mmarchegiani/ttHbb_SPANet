@@ -1,0 +1,49 @@
+features:
+  common:
+    JetGood:
+      pt: pt
+      eta: eta
+      phi: phi
+      btag: btagDeepFlavB
+      btag_L: btag_L
+      btag_M: btag_M
+      btag_H: btag_H
+    LeptonGood:
+      pt: pt
+      eta: eta
+      phi: phi
+      pdgId: pdgId
+    MET:
+      pt: pt
+      phi: phi
+      sig: significance
+    events:
+      jets_ht: JetGood_Ht
+      bjets_ht: BJetGood_Ht
+      lightjets_ht: LightJetGood_Ht
+      drbb_min: deltaRbb_min
+      detabb_min: deltaEtabb_min
+      dphibb_min: deltaPhibb_min
+      drbb_avg: deltaRbb_avg
+      mbb_closest: mbb_closest
+      mbb_min: mbb_min
+      mbb_max: mbb_max
+
+  by_sample: {}
+
+features_pad:
+  common:
+    JetGood:
+      m: 0
+    LeptonGood:
+      m: 0
+    MET:
+      m: 0
+      eta: 0
+  by_sample: {}
+
+awkward_collections:
+  - JetGood
+
+matched_collections: {}
+

@@ -46,7 +46,7 @@ class ParquetDataset:
         if self.schema == "coffea":
             return list(self.columns[sample].keys())
         elif self.schema == "parquet":
-            return list(self.cutflow.keys())
+            return list(filter(lambda dataset : dataset.startswith(sample), list(self.cutflow.keys())))
         else:
             raise ValueError(f"Schema {self.schema} not recognized.")
 
@@ -64,6 +64,12 @@ class ParquetDataset:
             if len(samples) == 0:
                 raise ValueError(f"No sample found with {self.nevents} events.")
             return samples
+
+    def is_mc(self, sample):
+        if sample.startswith("DATA"):
+            return False
+        else:
+            return True
 
     def load_input(self):
         '''Load the input file and check if the event category `cat` is present.'''
@@ -138,13 +144,14 @@ class ParquetDataset:
 
         print("Normalizing genweights...")
         for sample in self.samples:
-            for dataset in self.get_datasets(sample):
-                weight = self.get_weight(sample, dataset)
-                if self.schema == "coffea":
-                    weight_new = column_accumulator(weight / self.sum_genweights[dataset])
-                    self.columns[sample][dataset][self.cat]["weight"] = weight_new
-                elif self.schema == "parquet":
-                    self.events.weight = weight / self.sum_genweights[dataset]
+            if self.is_mc(sample):
+                for dataset in self.get_datasets(sample):
+                    weight = self.get_weight(sample, dataset)
+                    if self.schema == "coffea":
+                        weight_new = column_accumulator(weight / self.sum_genweights[dataset])
+                        self.columns[sample][dataset][self.cat]["weight"] = weight_new
+                    elif self.schema == "parquet":
+                        self.events.weight = weight / self.sum_genweights[dataset]
 
     def load_features(self):
         '''Load the features dictionary with common features and sample-specific features.'''
@@ -194,10 +201,7 @@ class ParquetDataset:
             # If the collection is not a Momentum4D array, it is zipped as it is.
             # Here we assume that the ntuples are unflattened, therefore we don't need to unflatten them before zipping.
             for collection in self.array_dict[sample].keys():
-                try:
-                    ndim = self.get_collection_dim(self.array_dict[sample][collection])
-                except Exception as e:
-                    breakpoint()
+                ndim = self.get_collection_dim(self.array_dict[sample][collection])
                 if (collection not in self.awkward_collections) & (ndim > 1):
                     # We flatten the collections that should not be saved as awkward collections after zipping
                     self.zipped_dict[sample][collection] = ak.flatten(ak.zip(self.array_dict[sample][collection], with_name='Momentum4D'))
@@ -219,7 +223,8 @@ class ParquetDataset:
                         self.zipped_dict[sample][collection] = ak.with_field(self.zipped_dict[sample][collection], ak.fill_none(masked_arrays.prov, -1), "prov")
 
             # Add the remaining keys to the zipped dictionary
-            self.zipped_dict[sample]["event"] = ak.zip({"weight" : self.events.weight})
+            if self.is_mc(sample):
+                self.zipped_dict[sample]["event"] = ak.zip({"weight" : self.events.weight})
 
     def build_arrays_from_accumulator(self):
         '''Build the Momentum4D arrays for the jets, partons, leptons, met and higgs.'''
@@ -270,7 +275,8 @@ class ParquetDataset:
                         self.zipped_dict[sample][collection] = ak.with_field(self.zipped_dict[sample][collection], ak.fill_none(masked_arrays.prov, -1), "prov")
 
             # Add the remaining keys to the zipped dictionary
-            self.zipped_dict[sample]["event"] = ak.zip({"weight" : cs["weight"].value})
+            if self.is_mc(sample):
+                self.zipped_dict[sample]["event"] = ak.zip({"weight" : cs["weight"].value})
 
     def save_parquet(self):
         '''Create the parquet files with the zipped dictionary.'''

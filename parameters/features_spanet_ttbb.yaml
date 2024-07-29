@@ -17,12 +17,21 @@ mapping_sample:
   tt+C: ttcc
   tt+LF: ttlf
 
+one_hot_encoding: true
+signal_label: signal
+mapping_encoding:
+  ttHTobb: 1
+  tt+B: 2
+  tt+C: 3
+  tt+LF: 4
+
 classification:
   EVENT:
     - tthbb
     - ttbb
     - ttcc
     - ttlf
+    - signal
 
 frac_train: 0.8
 

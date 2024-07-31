@@ -2,7 +2,7 @@ input:
   Jet: [MASK, pt, eta, phi, sin_phi, cos_phi, btag, btag_L, btag_M, btag_H]
   Lepton: [pt, eta, phi, sin_phi, cos_phi, is_electron]
   Met: [pt, eta, phi, sin_phi, cos_phi]
-  Event: [jets_ht, bjets_ht, lightjets_ht, drbb_min, detabb_min, dphibb_min, drbb_avg, mbb_closest, mbb_min, mbb_max]
+  Event: [ht, bjets_ht, lightjets_ht, drbb_min, detabb_min, dphibb_min, drbb_avg, mbb_closest, mbb_min, mbb_max]
 
 collection:
   Jet: JetGood

@@ -121,6 +121,8 @@ class H5Dataset:
     def load_config(self):
         '''Load the config file with OmegaConf and read the input features.'''
         self.cfg = OmegaConf.load(self.cfg)
+        print("Reading configuration file: ")
+        print(OmegaConf.to_yaml(self.cfg))
         self.input_features = self.cfg["input"]
         self.collection = self.cfg["collection"]
         self.targets = self.cfg["particles"]
@@ -256,10 +258,11 @@ class H5Dataset:
             features_dict = {}
             collection = self.collection[obj]
 
-            if (collection in df.fields) & (collection != "Event"):
+            if (collection in df.fields):
                 objects = df[collection]
                 for feat in features:
-                    if feat in ["MASK", "ht"]: continue
+                    if feat == "MASK":
+                        continue
                     if feat in ["sin_phi", "cos_phi"]:
                         phi = objects["phi"]
                         if feat == "sin_phi":
@@ -281,10 +284,8 @@ class H5Dataset:
                     if not "pt" in features:
                         raise NotImplementedError
                     features_dict["MASK"] = ~(features_dict["pt"] == 0)
-            elif collection == "Event":
-                for feat in features:
-                    values = df[feat]
-                    features_dict[feat] = ak.to_numpy(values)
+            else:
+                raise ValueError(f"Collection {collection} not found in the parquet file.")
             df_features[obj] = features_dict
         return df_features
 

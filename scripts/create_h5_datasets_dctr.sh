@@ -2,7 +2,7 @@
 
 datasets_data=(DATA_SingleEle DATA_SingleMuon)
 #years=("2018" "2017" "2016_PostVFP" "2016_PreVFP")
-years=("2018")
+years=("2017")
 for year in ${years[@]};
 do
     if [ $year == "2016_PreVFP" ]
@@ -34,7 +34,7 @@ do
             input_files+=("/eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/${year}/output_${dataset_data}_${year}_${era}.parquet")
         done
     done
-    output_file="/eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/h5/2018/tthbb_ttbar_DATA_with_ttbb_merging_ttbb_reweighed_${year}.h5"
+    output_file="/eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/h5/${year}/tthbb_ttbar_DATA_with_ttbb_merging_ttbb_reweighed_${year}.h5"
     command="python scripts/dataset/parquet_to_h5.py --cfg parameters/features_spanet_dctr.yaml -i ${input_files[*]} -o $output_file --data"
     $command
 done

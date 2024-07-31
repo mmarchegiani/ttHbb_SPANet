@@ -18,7 +18,7 @@ features:
       phi: phi
       sig: significance
     events:
-      jets_ht: JetGood_Ht
+      ht: JetGood_Ht
       bjets_ht: BJetGood_Ht
       lightjets_ht: LightJetGood_Ht
       drbb_min: deltaRbb_min

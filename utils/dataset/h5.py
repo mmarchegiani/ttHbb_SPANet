@@ -84,7 +84,8 @@ class H5Dataset:
             raise ValueError(f"Sample {sample} not found in the weights_scale dictionary.")
         for s, factor in self.weights_scale.items():
             if s == sample:
-                df["event"]["weight"] = factor * df["event"]["weight"]
+                # Overwrite the event weights with the scaled weights
+                df["event"] = ak.with_field(df.event, factor * df.event.weight, "weight")
         return df
 
     def load_input(self):

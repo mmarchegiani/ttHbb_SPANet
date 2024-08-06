@@ -28,6 +28,11 @@ features:
       mbb_closest: mbb_closest
       mbb_min: mbb_min
       mbb_max: mbb_max
+    spanet_output:
+      tthbb: tthbb
+      ttbb: ttbb
+      ttcc: ttcc
+      ttlf: ttlf
 
   by_sample: {}
 

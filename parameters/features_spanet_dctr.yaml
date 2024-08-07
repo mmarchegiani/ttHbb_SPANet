@@ -13,34 +13,42 @@ collection:
 particles: [t1, t2, h]
 
 mapping_sample:
-  ttHTobb: tthbb
   tt+B: ttbb
   tt+C: ttcc
   tt+LF: ttlf
   TTTo2L2Nu: tt2l2nu
+  WJets: wjets
+  ST: singletop
   DATA: data
 
 one_hot_encoding: false
 signal_label: signal
 mapping_encoding:
-  ttHTobb: 1
-  tt+B: 2
-  tt+C: 3
-  tt+LF: 4
+  tt+B: 0
+  tt+C: 1
+  tt+LF: 1
+  TTTo2L2Nu: 1
+  WJets: 1
+  ST: 1
+  DATA: 1
 
 classification:
   EVENT:
-    - tthbb
     - ttbb
     - ttcc
     - ttlf
     - tt2l2nu
+    - wjets
+    - singletop
     - data
 
 frac_train: 1.0
 
 weights_scale:
-  ttHTobb: 1.0
   tt+B: 0.7422
-  tt+C: 1.0
-  tt+LF: 1.0
+  tt+C: -1.0
+  tt+LF: -1.0
+  TTTo2L2Nu: -1.0
+  WJets: -1.0
+  ST: -1.0
+  DATA: 1.0

@@ -5,7 +5,7 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(
-    name="ttHbb_SPANet",
+    name="tthbb_spanet",
     packages=find_packages(),
     version="0.1.0",
     description="Repository for development of a signal vs background classifier in the ttH(bb) analysis based on SPANet.",

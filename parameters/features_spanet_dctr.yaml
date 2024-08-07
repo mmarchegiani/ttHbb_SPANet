@@ -21,16 +21,15 @@ mapping_sample:
   ST: singletop
   DATA: data
 
-one_hot_encoding: false
-signal_label: signal
 mapping_encoding:
-  tt+B: 0
-  tt+C: 1
-  tt+LF: 1
-  TTTo2L2Nu: 1
-  WJets: 1
-  ST: 1
-  DATA: 1
+  dctr:
+    tt+B: 0
+    tt+C: 1
+    tt+LF: 1
+    TTTo2L2Nu: 1
+    WJets: 1
+    ST: 1
+    DATA: 1
 
 classification:
   EVENT:

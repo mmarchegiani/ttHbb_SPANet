@@ -75,7 +75,8 @@ class H5Dataset:
 
         # Define one hot encoded label for multiclassifier
         if self.one_hot_encoding:
-            df[self.signal_label] = ak.values_astype(np.ones(len(df), dtype=int) * self.mapping_encoding[sample], int)
+            for label, mapping in self.mapping_encoding.items():
+                df[label] = ak.values_astype(np.ones(len(df), dtype=int) * mapping[sample], int)
         return df
 
     def scale_weights(self, df, sample):
@@ -131,10 +132,9 @@ class H5Dataset:
         self.classification_targets = self.cfg["classification"]
         self.frac_train = self.cfg["frac_train"]
         self.mapping_sample = self.cfg["mapping_sample"]
-        self.one_hot_encoding = self.cfg["one_hot_encoding"]
+        self.one_hot_encoding = True if "mapping_encoding" in self.cfg else False
         if self.one_hot_encoding:
             self.mapping_encoding = self.cfg["mapping_encoding"]
-            self.signal_label = self.cfg["signal_label"]
         if "weights_scale" in self.cfg:
             self.weights_scale = self.cfg["weights_scale"]
 

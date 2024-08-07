@@ -44,11 +44,23 @@ class ParquetDataset:
 
     def get_datasets(self, sample=None):
         if self.schema == "coffea":
-            return list(self.columns[sample].keys())
+            datasets = list(self.columns[sample].keys())
         elif self.schema == "parquet":
-            return list(filter(lambda dataset : dataset.startswith(sample), list(self.cutflow.keys())))
+            datasets_all = [dataset for dataset, d in self.cutflow.items() if d.get(sample, None) != None]
+            datasets = []
+            for dataset in datasets_all:
+                for sample, nevt in self.cutflow[dataset].items():
+                    if nevt == self.nevents:
+                        datasets.append(dataset)
         else:
             raise ValueError(f"Schema {self.schema} not recognized.")
+
+        if len(datasets) == 0:
+            raise ValueError(f"No dataset found for sample {sample}.")
+        if len(datasets) > 1:
+            raise ValueError(f"Multiple datasets found for sample {sample}.\nDatasets: {datasets}")
+
+        return datasets
 
     @property
     def samples(self):
@@ -151,7 +163,7 @@ class ParquetDataset:
                         weight_new = column_accumulator(weight / self.sum_genweights[dataset])
                         self.columns[sample][dataset][self.cat]["weight"] = weight_new
                     elif self.schema == "parquet":
-                        self.events.weight = weight / self.sum_genweights[dataset]
+                        self.events = ak.with_field(self.events, weight / self.sum_genweights[dataset], "weight")
 
     def load_features(self):
         '''Load the features dictionary with common features and sample-specific features.'''

@@ -102,11 +102,12 @@ class H5Dataset:
         for input_file in self.input_files:
             print("Reading file: ", input_file)
             df = ak.from_parquet(input_file)
+            # For data, save weights of 1 for all events
+            if self.has_data & (not "event" in df.fields):
+                df["event"] = ak.zip({"weight": np.ones(len(df), dtype=np.float)})
             # Reweigh the events by a factor
             if self.reweigh:
                 df = self.scale_weights(df, self.get_sample_name(input_file))
-            if self.has_data & (not "event" in df.fields):
-                df["event"] = ak.zip({"weight": np.ones(len(df), dtype=np.float)})
             # Get sample name from the input file name
             df = self.build_labels(df, self.get_sample_name(input_file))
             dfs.append(df)

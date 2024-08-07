@@ -1,6 +1,6 @@
 import argparse
 
-from utils.dataset.parquet import ParquetDataset
+from tthbb_spanet.lib.dataset.parquet import ParquetDataset
 
 # Read arguments from command line: input file and output directory. Description: script to convert ntuples from coffea file to parquet file.
 parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')

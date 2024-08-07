@@ -1,6 +1,6 @@
 import argparse
 
-from utils.dataset.h5 import H5Dataset
+from tthbb_spanet.lib.dataset.h5 import H5Dataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')

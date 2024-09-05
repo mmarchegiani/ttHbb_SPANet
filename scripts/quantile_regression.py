@@ -18,6 +18,16 @@ class WeightedQuantileTransformer(BaseEstimator, TransformerMixin):
         self.n_quantiles = n_quantiles
         self.output_distribution = output_distribution
     
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(np.array([self.quantiles_, self.reference_quantiles_]), f)
+
+    def load(self, filename):
+        extension = os.path.splitext(filename)[1]
+        if not extension == '.pkl':
+            raise ValueError(f"Invalid file extension '{os.path.splitext(filename)[1]}'. Only '.pkl' files are supported.")
+        self.quantiles_, self.reference_quantiles_ = np.load(filename, allow_pickle=True)
+
     def _weighted_quantiles(self, X, weights):
         # Calculate weighted quantiles
         sorted_indices = np.argsort(X)
@@ -76,7 +86,7 @@ if __name__ == "__main__":
     if not os.path.isdir(args.input):
         raise NotADirectoryError(f"Input folder '{args.input}' is not a directory.")
     os.makedirs(args.output, exist_ok=True)
-    output_file = os.path.join(args.output, "quantile_transformer.pkl")
+    output_file = os.path.join(args.output, "quantiles_regressed.pkl")
     exclude_samples = ["ttHTobb_ttToSemiLep", "TTbbSemiLeptonic_4f_tt+LF", "TTbbSemiLeptonic_4f_tt+C", "TTToSemiLeptonic_tt+B"]
     datasets = list(filter(lambda x : x.endswith(".parquet"), os.listdir(args.input)))
     datasets = [f"{args.input}/{dataset}" for dataset in datasets if not any(s in dataset for s in exclude_samples)]
@@ -97,19 +107,17 @@ if __name__ == "__main__":
     assert np.allclose(n, np.ones_like(n)*n[0], atol=0.01), "The ttHbb distribution is not uniform. Please double-check the fit of the quantile transformer." # Check that the ttHbb distribution is uniform
     print(f"The ttHbb distribution is uniform after quantile transformation within {args.rtol*100}%.")
 
-    # Save the fitted quantile transformer
-    print("Saving the fitted quantile transformer to", output_file)
-    with open(output_file, 'wb') as f:
-        pickle.dump(transformer, f)
+    print("Saving the fitted quantiles to", output_file)
+    transformer.save(output_file)
 
     # Check that the fitted quantile transformer can be loaded
-    print("Reading the fitted quantile transformer from", output_file)
-    with open(output_file, 'rb') as f:
-        transformer_loaded = pickle.load(f)
+    print("Reading the fitted quantiles from", output_file)
+    transformer_loaded = WeightedQuantileTransformer(n_quantiles=args.n_quantiles, output_distribution='uniform')
+    transformer_loaded.load(output_file)
 
     transformed_score_loaded = transformer_loaded.transform(X)
 
     # Check that the loaded quantile transformer works
-    assert np.allclose(transformed_score, transformed_score_loaded), "The loaded quantile transformer does not work. Please double-check the save/load process."
-    print("The saved quantile transformer can be loaded and works correctly.")
+    assert np.allclose(transformed_score, transformed_score_loaded), "The loaded quantiles do not work. Please double-check the save/load process."
+    print("The saved quantiles can be loaded and work correctly.")
 

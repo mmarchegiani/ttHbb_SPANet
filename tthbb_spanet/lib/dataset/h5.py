@@ -26,8 +26,8 @@ class SpecialKey(str, Enum):
     Embeddings = "EMBEDDINGS"
     Weights = "WEIGHTS"
 
-class H5Dataset:
-    def __init__(self, input_file, output_file, cfg, fully_matched=False, shuffle=True, reweigh=False, entrystop=None, has_data=False):
+class Dataset:
+    def __init__(self, input_file, output_file, cfg, frac_train=1.0, shuffle=True, reweigh=False, entrystop=None, has_data=False):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -37,19 +37,16 @@ class H5Dataset:
             raise ValueError(f"Input file {input_file} should be a string or a list of strings.")
         self.output_file = output_file
         self.cfg = cfg
-        self.fully_matched = fully_matched
+        self.frac_train = frac_train
         self.shuffle = shuffle
         self.reweigh = reweigh
         self.entrystop = entrystop
         self.has_data = has_data
 
         self.sample_dict = defaultdict(dict)
-
         self.load_config()
         self.check_output()
-        self.dataset = Dataset(self)
-        if self.fully_matched:
-            self.select_fully_matched()
+        self.df = self.load_input()
 
     def get_sample_name(self, input_file):
         '''Get the sample name from the input file name.'''
@@ -123,14 +120,12 @@ class H5Dataset:
 
     def load_config(self):
         '''Load the config file with OmegaConf and read the input features.'''
-        self.cfg = OmegaConf.load(self.cfg)
+        if type(self.cfg) == str:
+            self.cfg = OmegaConf.load(self.cfg)
+        elif type(self.cfg) == dict:
+            self.cfg = OmegaConf.create(self.cfg)
         print("Reading configuration file: ")
         print(OmegaConf.to_yaml(self.cfg))
-        self.input_features = self.cfg["input"]
-        self.collection = self.cfg["collection"]
-        self.targets = self.cfg["particles"]
-        self.classification_targets = self.cfg["classification"]
-        self.frac_train = self.cfg["frac_train"]
         self.mapping_sample = self.cfg["mapping_sample"]
         self.one_hot_encoding = True if "mapping_encoding" in self.cfg else False
         if self.one_hot_encoding:
@@ -148,27 +143,6 @@ class H5Dataset:
         if os.path.exists(self.output_file):
             raise ValueError(f"Output file {self.output_file} already exists.")
         os.makedirs(os.path.abspath(os.path.dirname(self.output_file)), exist_ok=True)
-
-    def select_fully_matched(self):
-        '''Select only fully matched events.'''
-        mask_fullymatched = ak.sum(self.dataset.df[self.collection["Jet"]].matched == True, axis=1) >= 6
-        df = self.dataset.df[mask_fullymatched]
-        jets = df[self.collection["Jet"]]
-
-        # We require exactly 2 jets from the Higgs, 3 jets from the W or hadronic top, and 1 lepton from the leptonic top
-        jets_higgs = jets[jets.prov == 1]
-        mask_match = ak.num(jets_higgs) == 2
-
-        jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
-        mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
-
-        jets_tlep = jets[jets.prov == 3]
-        mask_match = mask_match & (ak.num(jets_tlep) == 1)
-
-        df = df[mask_match]
-        print(f"Selected {len(df)} fully matched events")
-
-        self.dataset.df = df
 
     def create_groups(self):
         '''Create the groups in the h5 file.'''
@@ -338,11 +312,6 @@ class H5Dataset:
             print(f"Processing dataset: {dataset} ({len(getattr(self.dataset, dataset))} events)")
             self.save_h5(dataset)
 
-class Dataset:
-    def __init__(self, h5_dataset : H5Dataset):
-        self.df = h5_dataset.load_input()
-        self.frac_train = h5_dataset.frac_train
-
     @property
     def train(self):
         '''Return the training dataset according to the fraction `frac_train`.'''
@@ -352,3 +321,39 @@ class Dataset:
     def test(self):
         '''Return the testing dataset according to the fraction `frac_train`.'''
         return self.df[int(self.frac_train*len(self.df)):]
+
+class SPANetDataset(Dataset):
+    def __init__(self, input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False):
+        super().__init__(input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False)
+        self.fully_matched = fully_matched
+        if self.fully_matched:
+            self.select_fully_matched()
+
+    def load_config(self):
+        '''Load the config file with OmegaConf and read the input features for the SPANet training.'''
+        super().load_config()
+        self.input_features = self.cfg["input"]
+        self.collection = self.cfg["collection"]
+        self.targets = self.cfg["particles"]
+        self.classification_targets = self.cfg["classification"]
+
+    def select_fully_matched(self):
+        '''Select only fully matched events.'''
+        mask_fullymatched = ak.sum(self.dataset.df[self.collection["Jet"]].matched == True, axis=1) >= 6
+        df = self.dataset.df[mask_fullymatched]
+        jets = df[self.collection["Jet"]]
+
+        # We require exactly 2 jets from the Higgs, 3 jets from the W or hadronic top, and 1 lepton from the leptonic top
+        jets_higgs = jets[jets.prov == 1]
+        mask_match = ak.num(jets_higgs) == 2
+
+        jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
+        mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
+
+        jets_tlep = jets[jets.prov == 3]
+        mask_match = mask_match & (ak.num(jets_tlep) == 1)
+
+        df = df[mask_match]
+        print(f"Selected {len(df)} fully matched events")
+
+        self.dataset.df = df

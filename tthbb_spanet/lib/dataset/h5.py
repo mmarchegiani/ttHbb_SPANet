@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from collections import defaultdict
+from abc import ABC, abstractmethod
 
 import numba
 import vector
@@ -11,6 +12,7 @@ import numpy as np
 import awkward as ak
 import h5py
 
+import omegaconf
 from omegaconf import OmegaConf
 
 # Inherited from https://github.com/Alexanders101/SPANet/blob/master/spanet/dataset/types.py
@@ -27,7 +29,7 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class Dataset:
-    def __init__(self, input_file, output_file, cfg, frac_train=1.0, shuffle=True, reweigh=False, entrystop=None, has_data=False):
+    def __init__(self, input_file, cfg=None, shuffle=True, reweigh=False, entrystop=None, has_data=False, label=True):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -35,17 +37,16 @@ class Dataset:
             self.input_files = input_file
         else:
             raise ValueError(f"Input file {input_file} should be a string or a list of strings.")
-        self.output_file = output_file
         self.cfg = cfg
-        self.frac_train = frac_train
         self.shuffle = shuffle
         self.reweigh = reweigh
         self.entrystop = entrystop
         self.has_data = has_data
+        self.label = label
+        self.masks = {}
 
         self.sample_dict = defaultdict(dict)
         self.load_config()
-        self.check_output()
         self.df = self.load_input()
 
     def get_sample_name(self, input_file):
@@ -107,7 +108,8 @@ class Dataset:
             if self.reweigh:
                 df = self.scale_weights(df, self.get_sample_name(input_file))
             # Get sample name from the input file name
-            df = self.build_labels(df, self.get_sample_name(input_file))
+            if self.label:
+                df = self.build_labels(df, self.get_sample_name(input_file))
             dfs.append(df)
         # Return the concatenated dataframe
         # If shuffle is True, the events are randomly shuffled
@@ -118,8 +120,18 @@ class Dataset:
             df_concat = df_concat[:self.entrystop]
         return df_concat
 
+    def load_defaults(self):
+        '''Load default configuration parameters.'''
+        self.mapping_sample = None
+        self.one_hot_encoding = False
+        self.test_size = 0.2
+
     def load_config(self):
         '''Load the config file with OmegaConf and read the input features.'''
+        if self.cfg == None:
+            print("No configuration file provided. Loading default configuration parameters.")
+            self.load_defaults()
+            return
         if type(self.cfg) == str:
             self.cfg = OmegaConf.load(self.cfg)
         elif type(self.cfg) == dict:
@@ -132,17 +144,133 @@ class Dataset:
             self.mapping_encoding = self.cfg["mapping_encoding"]
         if "weights_scale" in self.cfg:
             self.weights_scale = self.cfg["weights_scale"]
+        self.test_size = self.cfg.get("test_size", 0.2)
 
-    def check_output(self):
+    def store_mask(self, name, mask):
+        '''Store the mask in the masks dictionary.'''
+        assert len(mask) == len(self.df), f"Mask length {len(mask)} does not match the dataframe length {len(self.df)}."
+        self.masks[name] = mask
+
+    def store_masks(self, masks):
+        '''Store the masks in the masks dictionary.'''
+        assert ((type(masks) == dict) | (type(masks) == omegaconf.dictconfig.DictConfig)), f"Masks should be a dictionary."
+        for name, mask in masks.items():
+            self.store_mask(name, mask)
+
+    @property
+    def n_train(self):
+        '''Return the number of training events.'''
+        return int((1-self.test_size)*len(self.df))
+
+    @property
+    def train_mask(self):
+        '''Return the training mask according to `test_size`.'''
+        # get array of indices of self.df
+        indices = np.arange(len(self.df))
+        mask = np.ones(len(self.df), dtype=bool)
+        return np.where(indices < self.n_train, mask, ~mask)
+
+    @property
+    def test_mask(self):
+        '''Return the testing mask according to `test_size`.'''
+        return ~self.train_mask
+
+    @property
+    def train(self):
+        '''Return the training dataset according to `test_size`.'''
+        return self.df[:self.n_train]
+
+    @property
+    def test(self):
+        '''Return the testing dataset according to `test_size`.'''
+        return self.df[self.n_train:]
+
+    @abstractmethod
+    def save(self, output_file):
+        """Method to save the dataset. Specific to each dataset type."""
+        pass
+
+class DCTRDataset(Dataset):
+    def check_output(self, output_file):
         '''Check the output file extension and if it already exists.'''
         # Check the output file extension
-        filename, file_extension = os.path.splitext(self.output_file)
-        if not file_extension == ".h5":
-            raise ValueError(f"Output file {self.output_file} should be in .h5 format.")
+        filename, file_extension = os.path.splitext(output_file)
+        if not file_extension == ".parquet":
+            raise ValueError(f"Output file {output_file} should be in .parquet format.")
         # Check if output file exists
-        if os.path.exists(self.output_file):
-            raise ValueError(f"Output file {self.output_file} already exists.")
-        os.makedirs(os.path.abspath(os.path.dirname(self.output_file)), exist_ok=True)
+        if os.path.exists(output_file):
+            raise ValueError(f"Output file {output_file} already exists.")
+        os.makedirs(os.path.abspath(os.path.dirname(output_file)), exist_ok=True)
+
+    def save(self, output_file, mask_name=None):
+        '''Save the parquet file.'''
+        os.makedirs(os.path.abspath(os.path.dirname(output_file)), exist_ok=True)
+        for dataset in ["train", "test"]:
+            df_to_save = getattr(self, dataset)
+            if mask_name is not None:
+                mask = self.masks[mask_name][getattr(self, f"{dataset}_mask")]
+                df_to_save = df_to_save[mask]
+            output_file_dataset = output_file.replace(".parquet", f"_{mask_name}_{dataset}_{len(df_to_save)}.parquet")
+            self.check_output(output_file_dataset)
+            print(f"Saving {dataset} dataset to: {output_file_dataset}")
+            ak.to_parquet(df_to_save, output_file_dataset)
+
+    def save_all(self, output_file):
+        for mask_name in self.masks.keys():
+            self.save(output_file, mask_name)
+
+    @classmethod
+    def from_parquet(self, input_file, shuffle=False, reweigh=False, entrystop=None, has_data=False, label=False):
+        '''Load the input file.'''
+
+        return DCTRDataset(input_file, shuffle=shuffle, reweigh=reweigh, entrystop=entrystop, has_data=has_data, label=label)
+
+class SPANetDataset(Dataset):
+    def __init__(self, input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False):
+        super().__init__(input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False)
+        self.fully_matched = fully_matched
+        if self.fully_matched:
+            self.select_fully_matched()
+
+    def load_config(self):
+        '''Load the config file with OmegaConf and read the input features for the SPANet training.'''
+        super().load_config()
+        self.input_features = self.cfg["input"]
+        self.collection = self.cfg["collection"]
+        self.targets = self.cfg["particles"]
+        self.classification_targets = self.cfg["classification"]
+
+    def select_fully_matched(self):
+        '''Select only fully matched events.'''
+        mask_fullymatched = ak.sum(self.dataset.df[self.collection["Jet"]].matched == True, axis=1) >= 6
+        df = self.dataset.df[mask_fullymatched]
+        jets = df[self.collection["Jet"]]
+
+        # We require exactly 2 jets from the Higgs, 3 jets from the W or hadronic top, and 1 lepton from the leptonic top
+        jets_higgs = jets[jets.prov == 1]
+        mask_match = ak.num(jets_higgs) == 2
+
+        jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
+        mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
+
+        jets_tlep = jets[jets.prov == 3]
+        mask_match = mask_match & (ak.num(jets_tlep) == 1)
+
+        df = df[mask_match]
+        print(f"Selected {len(df)} fully matched events")
+
+        self.dataset.df = df
+
+    def check_output(self, output_file):
+        '''Check the output file extension and if it already exists.'''
+        # Check the output file extension
+        filename, file_extension = os.path.splitext(output_file)
+        if not file_extension == ".h5":
+            raise ValueError(f"Output file {output_file} should be in .h5 format.")
+        # Check if output file exists
+        if os.path.exists(output_file):
+            raise ValueError(f"Output file {output_file} already exists.")
+        os.makedirs(os.path.abspath(os.path.dirname(output_file)), exist_ok=True)
 
     def create_groups(self):
         '''Create the groups in the h5 file.'''
@@ -287,12 +415,14 @@ class Dataset:
         '''Print the h5 file tree.'''
         self.h5_tree(self.file)
 
-    def save_h5(self, dataset_type):
+    def save_h5(self, output_file, dataset_type):
         '''Save the h5 file.'''
         assert dataset_type in ["train", "test"], f"Dataset type `{dataset_type}` not recognized."
 
+        self.check_output(output_file)
+
         df = getattr(self.dataset, dataset_type)
-        output_file = self.output_file.replace(".h5", f"_{dataset_type}_{len(df)}.h5")
+        output_file = output_file.replace(".h5", f"_{dataset_type}_{len(df)}.h5")
         
         print("Creating output file: ", output_file)
         self.file = h5py.File(output_file, "w")
@@ -311,49 +441,3 @@ class Dataset:
         for dataset in ["train", "test"]:
             print(f"Processing dataset: {dataset} ({len(getattr(self.dataset, dataset))} events)")
             self.save_h5(dataset)
-
-    @property
-    def train(self):
-        '''Return the training dataset according to the fraction `frac_train`.'''
-        return self.df[:int(self.frac_train*len(self.df))]
-
-    @property
-    def test(self):
-        '''Return the testing dataset according to the fraction `frac_train`.'''
-        return self.df[int(self.frac_train*len(self.df)):]
-
-class SPANetDataset(Dataset):
-    def __init__(self, input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False):
-        super().__init__(input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False)
-        self.fully_matched = fully_matched
-        if self.fully_matched:
-            self.select_fully_matched()
-
-    def load_config(self):
-        '''Load the config file with OmegaConf and read the input features for the SPANet training.'''
-        super().load_config()
-        self.input_features = self.cfg["input"]
-        self.collection = self.cfg["collection"]
-        self.targets = self.cfg["particles"]
-        self.classification_targets = self.cfg["classification"]
-
-    def select_fully_matched(self):
-        '''Select only fully matched events.'''
-        mask_fullymatched = ak.sum(self.dataset.df[self.collection["Jet"]].matched == True, axis=1) >= 6
-        df = self.dataset.df[mask_fullymatched]
-        jets = df[self.collection["Jet"]]
-
-        # We require exactly 2 jets from the Higgs, 3 jets from the W or hadronic top, and 1 lepton from the leptonic top
-        jets_higgs = jets[jets.prov == 1]
-        mask_match = ak.num(jets_higgs) == 2
-
-        jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
-        mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
-
-        jets_tlep = jets[jets.prov == 3]
-        mask_match = mask_match & (ak.num(jets_tlep) == 1)
-
-        df = df[mask_match]
-        print(f"Selected {len(df)} fully matched events")
-
-        self.dataset.df = df

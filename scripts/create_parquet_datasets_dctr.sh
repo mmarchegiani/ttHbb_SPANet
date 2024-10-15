@@ -6,6 +6,7 @@ if [ $# -lt 1 ]; then
 fi
 FOLDER=$1
 BASE_FOLDER="/afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet"
+OUTPUT_FOLDER="/eos/user/m/mmarcheg/ttHbb/training_datasets/dctr_sfcalibrated"
 subsamples=(tt+B tt+C tt+LF)
 datasets_data=(DATA_SingleEle DATA_SingleMuon)
 datasets_mc=(
@@ -24,6 +25,25 @@ datasets_mc=(
     WJetsToLNu_HT-800To1200_800To1200
     WJetsToLNu_HT-1200To2500_1200To2500
     WJetsToLNu_HT-2500ToInf_2500ToInf
+    DYJetsToLL_M-50_HT-100to200_100to200
+    DYJetsToLL_M-50_HT-1200to2500_1200to2500
+    DYJetsToLL_M-50_HT-200to400_200to400
+    DYJetsToLL_M-50_HT-2500toInf_2500toInf
+    DYJetsToLL_M-50_HT-400to600_400to600
+    DYJetsToLL_M-50_HT-600to800_600to800
+    DYJetsToLL_M-50_HT-70to100_70to100
+    DYJetsToLL_M-50_HT-800to1200_800to1200
+    TTWJetsToLNu_2018
+    TTWJetsToLNu_TuneCP5_13TeV-amcatnloFXFX-madspin-pythia8_2018
+    TTWJetsToQQ_2018
+    TTWJetsToQQ_TuneCP5_13TeV-amcatnloFXFX-madspin-pythia8_2018
+    TTZToLLNuNu_2018
+    TTZToLLNuNu_M-10_TuneCP5_13TeV-amcatnlo-pythia8_2018
+    TTZToQQ_2018
+    TTZToQQ_TuneCP5_13TeV_amcatnlo-pythia8_2018
+    WW_2018
+    WZ_2018
+    ZZ_2018
 )
 datasets_ttsemilep=(TTToSemiLeptonic TTbbSemiLeptonic_4f)
 #for year in 2016_PreVFP 2016_PostVFP 2017 2018
@@ -44,7 +64,7 @@ do
     fi
     for dataset in "${datasets_mc[@]}"
     do
-        command="python ${BASE_FOLDER}/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/coffea/${year}/output_all_${year}.coffea -o /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/${year}/output_${dataset}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/semilep"
+        command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/semilep"
         $command
     done
     for dataset in "${datasets_ttsemilep[@]}"
@@ -55,7 +75,7 @@ do
         for subs in "${subsamples[@]}"
         do
             echo "Processing $dataset $subs"
-            command="python ${BASE_FOLDER}/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/coffea/${year}/output_all_${year}.coffea -o /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/${year}/output_${dataset}_${subs}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/${sample}_${subs}/semilep"
+            command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}_${subs}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/${sample}_${subs}/semilep"
             $command
         done
     done
@@ -64,7 +84,7 @@ do
         for era in "${eras[@]}"
         do
             dataset=${dataset_data}_${year}_${era}
-            command="python ${BASE_FOLDER}/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/coffea/${year}/output_all_${year}.coffea -o /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/${year}/output_${dataset}.parquet --ntuples ${FOLDER}/${dataset}/semilep"
+            command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}.parquet --ntuples ${FOLDER}/${dataset}/semilep"
             $command
         done
     done

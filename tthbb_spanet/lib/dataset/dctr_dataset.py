@@ -1,4 +1,5 @@
 import os
+import yaml
 import numpy as np
 import awkward as ak
 
@@ -6,9 +7,9 @@ import torch
 from sklearn.preprocessing import StandardScaler
 
 from .base import Dataset
-from ttbb_dctr.lib.data_preprocessing import get_njet_reweighting
+from ttbb_dctr.lib.data_preprocessing import get_njet_reweighting, get_njet_reweighting_map
 from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
-from ttbb_dctr.lib.data_preprocessing import get_device, _stack_arrays
+from ttbb_dctr.lib.data_preprocessing import get_device
 
 class DCTRDataset(Dataset):
     def __init__(self, input_file, cfg=None, shuffle=True, reweigh=False, entrystop=None, has_data=False, label=True):
@@ -30,17 +31,28 @@ class DCTRDataset(Dataset):
 
     def compute_njet_weights(self):
         '''Compute the 1D reweighting based on the number of jets.'''
-        mask_num = self.df.dctr == 1
-        mask_den = self.df.dctr == 0
+        mask_num = self.df.dctr == 1 # Data - other backgrounds
+        mask_den = self.df.dctr == 0 # ttbb
+        reweighting_map_dict = {}
         for name, mask in self.masks.items():
-            self.store_weight(name, get_njet_reweighting(self.df, mask & mask_num, mask & mask_den))
+            reweighting_map = get_njet_reweighting_map(self.df, mask & mask_num, mask & mask_den)
+            self.store_weight(name, get_njet_reweighting(self.df, reweighting_map, mask & mask_den))
+            reweighting_map_dict[name] = reweighting_map
+        self.reweighting_map = reweighting_map_dict
 
-    def check_output(self, output_file):
+    def save_reweighting_map(self, output_file):
+        '''Save the reweighting map to a json file.'''
+        self.check_output(output_file, ext=".yaml")
+        print(f"Saving reweighting map to: {output_file}")
+        with open(output_file, "w") as f:
+            yaml.dump(self.reweighting_map, f)
+
+    def check_output(self, output_file, ext=".parquet"):
         '''Check the output file extension and if it already exists.'''
         # Check the output file extension
         filename, file_extension = os.path.splitext(output_file)
-        if not file_extension == ".parquet":
-            raise ValueError(f"Output file {output_file} should be in .parquet format.")
+        if not file_extension == ext:
+            raise ValueError(f"Output file {output_file} should be in {ext} format.")
         # Check if output file exists
         if os.path.exists(output_file):
             raise ValueError(f"Output file {output_file} already exists.")
@@ -62,7 +74,7 @@ class DCTRDataset(Dataset):
                     df_to_save = self.apply_weight(df_to_save, self.weights[mask_name][getattr(self, f"{dataset}_mask")])
                 df_to_save = df_to_save[mask]
             output_file_dataset = output_file.replace(".parquet", f"_{mask_name}_{dataset}_{len(df_to_save)}.parquet")
-            self.check_output(output_file_dataset)
+            self.check_output(output_file_dataset, ext=".parquet")
             print(f"Saving {dataset} dataset to: {output_file_dataset}")
             ak.to_parquet(df_to_save, output_file_dataset)
 

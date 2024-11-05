@@ -33,17 +33,13 @@ datasets_mc=(
     DYJetsToLL_M-50_HT-600to800_600to800
     DYJetsToLL_M-50_HT-70to100_70to100
     DYJetsToLL_M-50_HT-800to1200_800to1200
-    TTWJetsToLNu_2018
-    TTWJetsToLNu_TuneCP5_13TeV-amcatnloFXFX-madspin-pythia8_2018
-    TTWJetsToQQ_2018
-    TTWJetsToQQ_TuneCP5_13TeV-amcatnloFXFX-madspin-pythia8_2018
-    TTZToLLNuNu_2018
-    TTZToLLNuNu_M-10_TuneCP5_13TeV-amcatnlo-pythia8_2018
-    TTZToQQ_2018
-    TTZToQQ_TuneCP5_13TeV_amcatnlo-pythia8_2018
-    WW_2018
-    WZ_2018
-    ZZ_2018
+    TTWJetsToLNu
+    TTWJetsToQQ
+    TTZToLLNuNu
+    TTZToQQ
+    WW
+    WZ
+    ZZ
 )
 datasets_ttsemilep=(TTToSemiLeptonic TTbbSemiLeptonic_4f)
 #for year in 2016_PreVFP 2016_PostVFP 2017 2018

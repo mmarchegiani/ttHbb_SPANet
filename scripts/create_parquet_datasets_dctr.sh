@@ -60,7 +60,7 @@ do
     fi
     for dataset in "${datasets_mc[@]}"
     do
-        command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/semilep"
+        command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg ${BASE_FOLDER}/parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/semilep"
         $command
     done
     for dataset in "${datasets_ttsemilep[@]}"
@@ -71,7 +71,7 @@ do
         for subs in "${subsamples[@]}"
         do
             echo "Processing $dataset $subs"
-            command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}_${subs}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/${sample}_${subs}/semilep"
+            command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg ${BASE_FOLDER}/parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}_${subs}_${year}.parquet --ntuples ${FOLDER}/${dataset}_${year}/${sample}_${subs}/semilep"
             $command
         done
     done
@@ -80,7 +80,7 @@ do
         for era in "${eras[@]}"
         do
             dataset=${dataset_data}_${year}_${era}
-            command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}.parquet --ntuples ${FOLDER}/${dataset}/semilep"
+            command="python ${BASE_FOLDER}/tthbb_spanet/scripts/dataset/coffea_to_parquet.py --cfg ${BASE_FOLDER}/parameters/features_dctr.yaml --cat semilep -i ${OUTPUT_FOLDER}/coffea/${year}/output_all_${year}.coffea -o ${OUTPUT_FOLDER}/parquet/${year}/output_${dataset}.parquet --ntuples ${FOLDER}/${dataset}/semilep"
             $command
         done
     done

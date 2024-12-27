@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea 
 parser.add_argument('-c', '--cfg', type=str, required=True, help='YAML configuration file with input features and features to pad')
 parser.add_argument('-i', '--input', type=str, required=True, help='Input coffea file')
 parser.add_argument('-o', '--output', type=str, required=True, help='Output parquet file')
+parser.add_argument('--dataset', type=str, required=True, help='Dataset name')
 parser.add_argument('--cat', type=str, default="semilep_LHE", required=False, help='Event category')
 parser.add_argument('-n', '--ntuples', default=None, type=str, required=False, help='Additional input parquet file with ntuples')
 
@@ -16,6 +17,7 @@ dataset = ParquetDataset(
     args.input,
     args.output,
     args.cfg,
+    args.dataset,
     args.cat,
     args.ntuples
 )

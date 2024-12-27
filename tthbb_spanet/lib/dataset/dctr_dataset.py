@@ -16,6 +16,7 @@ class DCTRDataset(Dataset):
         super().__init__(input_file, cfg=cfg, shuffle=shuffle, reweigh=reweigh, entrystop=entrystop, has_data=has_data, label=label)
         if (not "spanet_output" in self.df.fields) | ("BJetGood" not in self.df.fields):
             self.create_branches()
+        assert all(self.df.event.weight[self.df.data == 1] == self.df.event.weight_original[self.df.data == 1]), "Data weights should be equal to the original weights."
 
     def create_branches(self):
         mask_btag = ak.values_astype(self.df.JetGood.btag_M, bool)
@@ -58,14 +59,19 @@ class DCTRDataset(Dataset):
             raise ValueError(f"Output file {output_file} already exists.")
         os.makedirs(os.path.abspath(os.path.dirname(output_file)), exist_ok=True)
 
-    def apply_weight(self, df, weight):
-        '''Apply the event weights.'''
-        df["event"] = ak.with_field(df["event"], df.event.weight * weight, "weight")
+    def apply_weight(self, df, weight, mask=None):
+        '''Apply the event weights. If a mask is provided, apply the weights only to the events that pass the mask.'''
+        if mask is None:
+            df["event"] = ak.with_field(df["event"], df.event.weight * weight, "weight")
+        else:
+            df["event"] = ak.with_field(df["event"], np.where(mask, df.event.weight * weight, df.event.weight), "weight")
         return df
 
     def save(self, output_file, mask_name=None):
         '''Save the parquet file.'''
+        assert all(self.df.event.weight[self.df.data == 1] == self.df.event.weight_original[self.df.data == 1]), "Data weights should be equal to the original weights."
         os.makedirs(os.path.abspath(os.path.dirname(output_file)), exist_ok=True)
+        dataframes_to_save = {}
         for dataset in ["train", "test"]:
             df_to_save = getattr(self, dataset)
             if mask_name is not None:
@@ -73,10 +79,17 @@ class DCTRDataset(Dataset):
                 if mask_name in self.weights.keys():
                     df_to_save = self.apply_weight(df_to_save, self.weights[mask_name][getattr(self, f"{dataset}_mask")])
                 df_to_save = df_to_save[mask]
+            dataframes_to_save[dataset] = df_to_save
             output_file_dataset = output_file.replace(".parquet", f"_{mask_name}_{dataset}_{len(df_to_save)}.parquet")
             self.check_output(output_file_dataset, ext=".parquet")
             print(f"Saving {dataset} dataset to: {output_file_dataset}")
             ak.to_parquet(df_to_save, output_file_dataset)
+        # Save also the full dataset concatenating the train and test datasets
+        output_file_full = output_file.replace(".parquet", f"_{mask_name}_full_{len(dataframes_to_save['train'])+len(dataframes_to_save['test'])}.parquet")
+        self.check_output(output_file_full, ext=".parquet")
+        print(f"Saving full dataset to: {output_file_full}")
+        ak.to_parquet(ak.concatenate([dataframes_to_save["train"], dataframes_to_save["test"]]), output_file_full)
+
 
     def save_all(self, output_file):
         for mask_name in self.masks.keys():

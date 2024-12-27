@@ -51,6 +51,21 @@ class Dataset:
                                 Available samples: {self.mapping_sample.keys()}""")
         return sample_list[0]
 
+    def get_year(self, input_file):
+        '''Get the sample data-taking year from the input file name.'''
+        year_list = []
+        years = ["2016_PreVFP", "2016_PostVFP", "2017", "2018"]
+        for year in years:
+            if year in input_file:
+                year_list.append(year)
+        if len(year_list) == 0:
+            raise ValueError(f"Year not found in the input file name: {input_file}.\nAvailable years: {', '.join(years)}")
+        elif len(year_list) > 1:
+            raise ValueError(f"""Multiple years found in the input file name: {input_file}.
+                                A single year should be specified in the file name.\n
+                                Available years: {', '.join(years)}""")
+        return [year_list[0]]
+
     def build_labels(self, df, sample):
         '''Build labels for the classification nodes.'''
         for s, label in self.mapping_sample.items():
@@ -98,6 +113,12 @@ class Dataset:
             # Get sample name from the input file name
             if self.label:
                 df = self.build_labels(df, self.get_sample_name(input_file))
+                # Add metadata to the dataframe
+                df["metadata"] = ak.zip({"year": len(df)*[self.get_year(input_file)]})
+                year = df.metadata.year
+                # This is needed in order to have a 1D array with one year string per event
+                df["metadata"] = ak.with_field(df.metadata, year[:,0], "year")
+
             dfs.append(df)
         # Return the concatenated dataframe
         # If shuffle is True, the events are randomly shuffled

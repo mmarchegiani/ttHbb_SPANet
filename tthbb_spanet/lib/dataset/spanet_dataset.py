@@ -22,8 +22,8 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class SPANetDataset(Dataset):
-    def __init__(self, input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False):
-        super().__init__(input_file, output_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False)
+    def __init__(self, input_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False):
+        super().__init__(input_file, cfg, shuffle=shuffle, reweigh=reweigh, entrystop=entrystop, has_data=has_data)
         self.fully_matched = fully_matched
         if self.fully_matched:
             self.select_fully_matched()
@@ -71,11 +71,11 @@ class SPANetDataset(Dataset):
     def create_groups(self):
         '''Create the groups in the h5 file.'''
         for target in self.targets:
-            self.file.create_group(f"{SpecialKey.Targets}/{target}")
+            self.file.create_group(f"{SpecialKey.Targets.value}/{target}")
         for object in self.input_features.keys():
-            self.file.create_group(f"{SpecialKey.Inputs}/{object}")
+            self.file.create_group(f"{SpecialKey.Inputs.value}/{object}")
         for group in self.classification_targets:
-            self.file.create_group(f"{SpecialKey.Classifications}/{group}")
+            self.file.create_group(f"{SpecialKey.Classifications.value}/{group}")
 
     def create_targets(self, df):
         jets = df[self.collection["Jet"]]
@@ -92,8 +92,8 @@ class SPANetDataset(Dataset):
                 index_b1 = indices_prov[:,0]
                 index_b2 = indices_prov[:,1]
 
-                self.file.create_dataset(f"{SpecialKey.Targets}/h/b1", np.shape(index_b1), dtype='int64', data=index_b1)
-                self.file.create_dataset(f"{SpecialKey.Targets}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b1", np.shape(index_b1), dtype='int64', data=index_b1)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
 
             elif target == "t1":
                 mask = jets.prov == 5 # W->q1q2 from t1
@@ -105,15 +105,15 @@ class SPANetDataset(Dataset):
                 mask = jets.prov == 2 # t1->Wb
                 index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
-                self.file.create_dataset(f"{SpecialKey.Targets}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
-                self.file.create_dataset(f"{SpecialKey.Targets}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
-                self.file.create_dataset(f"{SpecialKey.Targets}/t1/b", np.shape(index_b_hadr), dtype='int64', data=index_b_hadr)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", np.shape(index_b_hadr), dtype='int64', data=index_b_hadr)
 
             elif target == "t2":
                 mask = jets.prov == 3 # t2->b
                 index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
-                self.file.create_dataset(f"{SpecialKey.Targets}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
             else:
                 raise NotImplementedError
 
@@ -121,20 +121,20 @@ class SPANetDataset(Dataset):
         '''Create the classification targets in the h5 file.'''
         for group, targets in self.classification_targets.items():
             for target in targets:
-                if group == SpecialKey.Event:
+                if group == SpecialKey.Event.value:
                     try:
                         values = df[target]
                     except:
                         raise Exception(f"Target {target} not found in the dataframe.")
-                    self.file.create_dataset(f"{SpecialKey.Classifications}/{group}/{target}", np.shape(values), dtype='int64', data=values)
+                    self.file.create_dataset(f"{SpecialKey.Classifications.value}/{group}/{target}", np.shape(values), dtype='int64', data=values)
                 else:
                     raise NotImplementedError
 
     def create_weights(self, df):
         '''Create the weights in the h5 file.'''
         weights = df.event.weight
-        print("Creating dataset: ", f"{SpecialKey.Weights}/weight")
-        self.file.create_dataset(f"{SpecialKey.Weights}/weight", np.shape(weights), dtype='float32', data=weights)
+        print("Creating dataset: ", f"{SpecialKey.Weights.value}/weight")
+        self.file.create_dataset(f"{SpecialKey.Weights.value}/weight", np.shape(weights), dtype='float32', data=weights)
 
     def create_inputs(self, df):
         '''Create the input arrays in the h5 file.'''
@@ -146,7 +146,7 @@ class SPANetDataset(Dataset):
                     dtype = 'bool'
                 else:
                     dtype = 'float32'
-                dataset_name = f"{SpecialKey.Inputs}/{obj}/{feat}"
+                dataset_name = f"{SpecialKey.Inputs.value}/{obj}/{feat}"
                 print("Creating dataset: ", dataset_name)
                 ds = self.file.create_dataset(dataset_name, np.shape(val), dtype=dtype, data=val)
 
@@ -156,36 +156,43 @@ class SPANetDataset(Dataset):
         for obj, features in self.input_features.items():
 
             features_dict = {}
-            collection = self.collection[obj]
-
-            if (collection in df.fields):
-                objects = df[collection]
+            if obj == "Event":
                 for feat in features:
-                    if feat == "MASK":
-                        continue
-                    if feat in ["sin_phi", "cos_phi"]:
-                        phi = objects["phi"]
-                        if feat == "sin_phi":
-                            values = np.sin(phi)
-                        elif feat == "cos_phi":
-                            values = np.cos(phi)
-                    elif feat == "is_electron":
-                        values = ak.values_astype(abs(objects["pdgId"]) == 11, int)
-                    else:
-                        values = objects[feat]
-                    if objects.ndim == 1:
-                        features_dict[feat] = ak.to_numpy(values)
-                    elif objects.ndim == 2:
-                        features_dict[feat] = ak.to_numpy(ak.fill_none(ak.pad_none(values, 16, clip=True), 0))
+                    if feat == "ht":
+                        features_dict["ht"] = ak.sum(df["JetGood"]["pt"], axis=1)
                     else:
                         raise NotImplementedError
-
-                if "MASK" in features:
-                    if not "pt" in features:
-                        raise NotImplementedError
-                    features_dict["MASK"] = ~(features_dict["pt"] == 0)
             else:
-                raise ValueError(f"Collection {collection} not found in the parquet file.")
+                collection = self.collection[obj]
+
+                if (collection in df.fields):
+                    objects = df[collection]
+                    for feat in features:
+                        if feat == "MASK":
+                            continue
+                        if feat in ["sin_phi", "cos_phi"]:
+                            phi = objects["phi"]
+                            if feat == "sin_phi":
+                                values = np.sin(phi)
+                            elif feat == "cos_phi":
+                                values = np.cos(phi)
+                        elif feat == "is_electron":
+                            values = ak.values_astype(abs(objects["pdgId"]) == 11, int)
+                        else:
+                            values = objects[feat]
+                        if objects.ndim == 1:
+                            features_dict[feat] = ak.to_numpy(values)
+                        elif objects.ndim == 2:
+                            features_dict[feat] = ak.to_numpy(ak.fill_none(ak.pad_none(values, 16, clip=True), 0))
+                        else:
+                            raise NotImplementedError
+
+                    if "MASK" in features:
+                        if not "pt" in features:
+                            raise NotImplementedError
+                        features_dict["MASK"] = ~(features_dict["pt"] == 0)
+                else:
+                    raise ValueError(f"Collection {collection} not found in the parquet file.")
             df_features[obj] = features_dict
         return df_features
 
@@ -211,29 +218,23 @@ class SPANetDataset(Dataset):
         '''Print the h5 file tree.'''
         self.h5_tree(self.file)
 
-    def save_h5(self, output_file, dataset_type):
-        '''Save the h5 file.'''
-        assert dataset_type in ["train", "test"], f"Dataset type `{dataset_type}` not recognized."
-
-        self.check_output(output_file)
-
-        df = getattr(self.dataset, dataset_type)
-        output_file = output_file.replace(".h5", f"_{dataset_type}_{len(df)}.h5")
-        
-        print("Creating output file: ", output_file)
-        self.file = h5py.File(output_file, "w")
-        self.create_groups()
-        if not self.has_data:
-            self.create_targets(df)
-        self.create_classifications(df)
-        self.create_inputs(df)
-        self.create_weights(df)
-        print(self.file)
-        self.print()
-        self.file.close()
-
-    def save_h5_all(self):
+    def save(self, output_file):
         '''Save the h5 file for both the training and testing datasets.'''
-        for dataset in ["train", "test"]:
-            print(f"Processing dataset: {dataset} ({len(getattr(self.dataset, dataset))} events)")
-            self.save_h5(dataset)
+        for dataset_type in ["train", "test"]:
+            print(f"Processing dataset: {dataset_type} ({len(getattr(self, dataset_type))} events)")
+
+            df = getattr(self, dataset_type)
+            output_file_custom = output_file.replace(".h5", f"_{dataset_type}_{len(df)}.h5")
+            self.check_output(output_file_custom)
+
+            print("Creating output file: ", output_file_custom)
+            self.file = h5py.File(output_file_custom, "w")
+            self.create_groups()
+            if not self.has_data:
+                self.create_targets(df)
+            self.create_classifications(df)
+            self.create_inputs(df)
+            self.create_weights(df)
+            print(self.file)
+            self.print()
+            self.file.close()

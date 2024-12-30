@@ -57,7 +57,7 @@
     "l2_penalty": 0.0002,
     "gradient_clip": 0.0,
     "dropout": 0.1,
-    "epochs": 800,
+    "epochs": 1000,
     "num_gpu": 1,
     "verbose_output": false,
     "usable_gpus": "",

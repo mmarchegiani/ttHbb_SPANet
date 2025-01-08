@@ -1,6 +1,6 @@
-MODEL=/eos/user/m/mmarcheg/ttHbb/models/multiclassifier_2018_300epochs/spanet_output/version_0
-PREDICTION=/eos/user/m/mmarcheg/ttHbb/predictions/multiclassifier_2018_300epochs/spanet_output/version_0/predictions_tthbb_ttbar_with_ttbb_merging_2018_test_919484_epoch55.h5
-VALIDATION=/eos/user/m/mmarcheg/ttHbb/training_datasets/classifier/multiclassifier_2018/tthbb_ttbar_with_ttbb_merging_2018_test_919484.h5
+MODEL=/eos/user/m/mmarcheg/ttHbb/models/spanet_v2/multiclassifier_btag_LMH/spanet_output/version_1
+PREDICTION=/eos/user/m/mmarcheg/ttHbb/predictions/spanet_v2/multiclassifier_btag_LMH/spanet_output/version_1/predictions_multiclassifier_full_Run2_test_2152028.h5
+VALIDATION=/eos/user/m/mmarcheg/ttHbb/training_datasets/spanet_v2/h5/tthbb_ttbar_with_ctag_one_hot_encoding_full_Run2_test_2152028.h5
 
 # Create output directory if it does not exist
 mkdir -p $(dirname $PREDICTION)

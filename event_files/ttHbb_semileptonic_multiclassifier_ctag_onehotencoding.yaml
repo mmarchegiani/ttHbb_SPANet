@@ -1,0 +1,47 @@
+INPUTS:
+    SEQUENTIAL:
+        Jet:
+            pt: log_normalize
+            eta: normalize
+            sin_phi: normalize
+            cos_phi: normalize
+            btag: none
+            btag_CvL: none
+            btag_CvB: none
+
+    GLOBAL:
+        Met:
+            pt: log_normalize
+            eta: normalize
+            sin_phi: normalize
+            cos_phi: normalize
+        Lepton:
+            pt: log_normalize
+            eta: normalize
+            sin_phi: normalize
+            cos_phi: normalize
+            is_electron: normalize
+        Event:
+            ht: log_normalize
+EVENT:
+    t1:
+        - q1
+        - q2
+        - b
+    t2:
+        - b
+    h:
+        - b1
+        - b2
+       
+PERMUTATIONS:
+    t1:
+        - [q1, q2]
+    h:
+        - [b1, b2]
+
+REGRESSIONS:
+
+CLASSIFICATIONS:
+    EVENT:
+        - signal

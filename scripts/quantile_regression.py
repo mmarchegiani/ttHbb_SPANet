@@ -2,6 +2,7 @@ import os
 import pickle
 import argparse
 import numpy as np
+import awkward as ak
 from scipy.stats import norm
 from sklearn.base import BaseEstimator, TransformerMixin
 import matplotlib.pyplot as plt
@@ -9,9 +10,6 @@ import mplhep as hep
 plt.style.use(hep.style.CMS)
 plt.rcParams["figure.figsize"] = [8,8]
 plt.rcParams["font.size"] = 18
-
-import tthbb_spanet
-from tthbb_spanet.lib.dataset.h5 import H5Dataset
 
 class WeightedQuantileTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, n_quantiles=1000, output_distribution='normal'):
@@ -70,35 +68,33 @@ def plot_score(X, W, transformer, label, output_dir):
     plt.savefig(f"{output_dir}/{label}_score.png", dpi=300)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Quantile regression")
-    parser.add_argument("-i", "--input", help="Input folder", required=True)
+    parser = argparse.ArgumentParser(description="Quantile regression of the ttHbb SPANet score on ttHbb events.")
+    parser.add_argument("-i", "--input", nargs="+", help="Input H5 files", required=True)
     parser.add_argument("-o", "--output", help="Output folder for fitted quantile transformer", required=True)
-    parser.add_argument("--cfg", help="Configuration file for the H5Dataset constructor.", required=True)
     parser.add_argument("-n", "--n_quantiles", type=int, default=10000, help="Number of quantiles", required=False)
     parser.add_argument("--rtol", type=float, default=1e-5, help="Relative tolerance for checking uniformity of the ttHbb distribution", required=False)
     parser.add_argument("--atol", type=float, default=0.01, help="Absolute tolerance for checking uniformity of the ttHbb distribution", required=False)
     args = parser.parse_args()
     
-    if not os.path.exists(args.input):
-        raise FileNotFoundError(f"Input folder '{args.input}' does not exist.")
-    if not os.path.exists(args.cfg):
-        raise FileNotFoundError(f"Configuration file '{args.cfg}' does not exist.")
-    if not os.path.isdir(args.input):
-        raise NotADirectoryError(f"Input folder '{args.input}' is not a directory.")
+    for file in args.input:
+        if not os.path.exists(file):
+            raise FileNotFoundError(f"Input file '{file}' does not exist.")
     os.makedirs(args.output, exist_ok=True)
     output_file = os.path.join(args.output, "quantiles_regressed.pkl")
-    exclude_samples = ["ttHTobb_ttToSemiLep", "TTbbSemiLeptonic_4f_tt+LF", "TTbbSemiLeptonic_4f_tt+C", "TTToSemiLeptonic_tt+B"]
-    datasets = list(filter(lambda x : x.endswith(".parquet"), os.listdir(args.input)))
-    datasets = [f"{args.input}/{dataset}" for dataset in datasets if not any(s in dataset for s in exclude_samples)]
-    h5 = H5Dataset(datasets, "test.h5", args.cfg, shuffle=True, reweigh=True, has_data=True)
-    events = h5.dataset.train
-    events_test = h5.dataset.test
-    assert len(events_test) == 0, "The whole dataset should be used for fitting the quantile transformer, but some events are in the test dataset. Please set `frac_train=1.0` in the configuration file."
 
+    # Read all the parquet files and merge them in a single awkward array
+    df_list = []
+    for file in args.input:
+        if not os.path.exists(file):
+            raise FileNotFoundError(f"Input file '{file}' does not exist.")
+        df = ak.from_parquet(file)
+        df_list.append(df)
+    events = ak.concatenate(df_list, axis=0)
+
+    # Here we assume that all the events are ttHbb events
     transformer = WeightedQuantileTransformer(n_quantiles=args.n_quantiles, output_distribution='uniform')
-    mask_tthbb = events.tthbb == 1
-    X = events.spanet_output.tthbb[mask_tthbb]
-    W = events.event.weight[mask_tthbb]
+    X = events.spanet_output.tthbb
+    W = events.event.weight
     print("Fitting quantile transformer on ttHbb sample...")
     transformer.fit(X, sample_weight=W) # Fit quantile transformer on ttHbb sample only
     transformed_score = transformer.transform(X)

@@ -3,13 +3,33 @@ import yaml
 import numpy as np
 import awkward as ak
 
-import torch
-from sklearn.preprocessing import StandardScaler
-
 from .base import Dataset
-from ttbb_dctr.lib.data_preprocessing import get_njet_reweighting, get_njet_reweighting_map
-from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
-from ttbb_dctr.lib.data_preprocessing import get_device
+
+def get_njet_reweighting_map(events, mask_num, mask_den):
+    reweighting_map_njet = {}
+    njet = ak.num(events.JetGood)
+    w = events.event.weight
+    for nj in range(4,7):
+        mask_nj = (njet == nj)
+        reweighting_map_njet[nj] = sum(w[mask_num & mask_nj]) / sum(w[mask_den & mask_nj])
+    for nj in range(7,21):
+        reweighting_map_njet[nj] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
+    return reweighting_map_njet
+
+def get_njet_reweighting(events, reweighting_map_njet, mask=None):
+    njet = ak.num(events.JetGood)
+    w = events.event.weight
+    w_nj = np.ones(len(events))
+    if mask is None:
+        mask = np.ones(len(events), dtype=bool)
+    for nj in range(4,7):
+        mask_nj = (njet == nj)
+        w_nj = np.where(mask & mask_nj, reweighting_map_njet[nj], w_nj)
+    for nj in range(7,21):
+        w_nj = np.where(mask & (njet >= 7), reweighting_map_njet[nj], w_nj)
+    print("1D reweighting map based on the number of jets:")
+    print(reweighting_map_njet)
+    return w_nj
 
 class DCTRDataset(Dataset):
     def __init__(self, input_file, cfg=None, shuffle=True, reweigh=False, entrystop=None, has_data=False, label=True):
@@ -19,14 +39,9 @@ class DCTRDataset(Dataset):
         assert all(self.df.event.weight[self.df.data == 1] == self.df.event.weight_original[self.df.data == 1]), "Data weights should be equal to the original weights."
 
     def create_branches(self):
+        # Define b-tagged jets collection
         mask_btag = ak.values_astype(self.df.JetGood.btag_M, bool)
         self.df = ak.with_field(self.df, self.df.JetGood[mask_btag], "BJetGood")
-        transformer = WeightedQuantileTransformer(n_quantiles=100000, output_distribution='uniform')
-        mask_tthbb = self.df.tthbb == 1
-        X = self.df.spanet_output.tthbb[mask_tthbb]
-        transformer.fit(X, sample_weight=-self.df.event.weight[mask_tthbb]) # Fit quantile transformer on ttHbb sample only (- in front of weights due to negative weights in DCTR samples)
-        transformed_score = transformer.transform(self.df.spanet_output.tthbb)
-        self.df["spanet_output"] = ak.with_field(self.df.spanet_output, transformed_score, "tthbb_transformed")
         # Create a copy of the original weights
         self.df["event"] = ak.with_field(self.df.event, self.df.event.weight, "weight_original")
 

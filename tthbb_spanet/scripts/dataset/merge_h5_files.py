@@ -82,6 +82,7 @@ if not args.overwrite and os.path.exists(args.output):
     raise Exception(f"Output file {args.output} already exists")
 
 # Write the shuffled data to the new h5 file
+print("Writing the data to the output file")
 with h5py.File(args.output, 'w') as f:
     write_data(f, combined_data)
 

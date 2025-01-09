@@ -76,8 +76,9 @@ class Dataset:
 
         # Define one hot encoded label for multiclassifier
         if self.one_hot_encoding:
-            value = self.mapping_encoding[sample]
-            df[self.signal_label] = ak.values_astype(np.ones(len(df), dtype=int) * value, int)
+            for label, encoding_dict in self.mapping_encoding.items():
+                df[label] = ak.values_astype(np.zeros(len(df), dtype=int), int)
+                df[label] = ak.values_astype(np.ones(len(df), dtype=int) * encoding_dict[sample], int)
         return df
 
     def scale_weights(self, df, sample):
@@ -133,7 +134,6 @@ class Dataset:
         '''Load default configuration parameters.'''
         self.mapping_sample = None
         self.one_hot_encoding = False
-        self.signal_label = None
         self.test_size = 0.2
 
     def load_config(self):
@@ -152,7 +152,8 @@ class Dataset:
         self.one_hot_encoding = True if "mapping_encoding" in self.cfg else False
         if self.one_hot_encoding:
             self.mapping_encoding = self.cfg["mapping_encoding"]
-            self.signal_label = self.cfg["signal_label"]
+            # Ensure that self.mapping_encoding is a dictionary of dictionaries where the keys of the dictionaries are the name of the labels to build
+            assert all([type(v) == omegaconf.dictconfig.DictConfig for v in self.mapping_encoding.values()]), "mapping_encoding should be a dictionary of dictionaries."
         if "weights_scale" in self.cfg:
             self.weights_scale = self.cfg["weights_scale"]
         self.test_size = self.cfg.get("test_size", 0.2)

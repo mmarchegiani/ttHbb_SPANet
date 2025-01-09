@@ -17,12 +17,12 @@ mapping_sample:
   tt+C: ttcc
   tt+LF: ttlf
 
-signal_label: signal
 mapping_encoding:
-  ttHTobb: 1
-  tt+B: 2
-  tt+C: 3
-  tt+LF: 4
+  signal:
+    ttHTobb: 1
+    tt+B: 2
+    tt+C: 3
+    tt+LF: 4
 
 classification:
   EVENT:

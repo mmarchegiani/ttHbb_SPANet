@@ -48,7 +48,7 @@ frac_train: 1.0
 
 weights_scale:
   ttHTobb: 1.0
-  tt+B: 0.7422
+  tt+B: 1.0
   tt+C: 1.0
   tt+LF: 1.0
   TTTo2L2Nu: 1.0

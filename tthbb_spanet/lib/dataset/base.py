@@ -69,10 +69,14 @@ class Dataset:
     def build_labels(self, df, sample):
         '''Build labels for the classification nodes.'''
         for s, label in self.mapping_sample.items():
-            if s == sample:
-                df[label] = ak.values_astype(np.ones(len(df), dtype=int), int)
-            else:
+            if label not in df.fields:
                 df[label] = ak.values_astype(np.zeros(len(df), dtype=int), int)
+            if s == sample:
+                new_labels = ak.values_astype(np.ones(len(df), dtype=int), int)
+            else:
+                new_labels = ak.values_astype(np.zeros(len(df), dtype=int), int)
+            # Take the OR of the labels to avoid overwriting the labels when different samples have the same label
+            df[label] = df[label] | new_labels
 
         # Define one hot encoded label for multiclassifier
         if self.one_hot_encoding:

@@ -16,12 +16,14 @@ from coffea.processor.accumulator import column_accumulator
 from coffea.processor import accumulate
 
 class ParquetDataset:
-    def __init__(self, input_file, output_file, cfg, cat="semilep_LHE", input_ntuples=None):
+    def __init__(self, input_file, output_file, cfg, dataset, cat="semilep_LHE", input_ntuples=None):
         self.input_file = input_file
         self.output_file = output_file
         self.cfg = cfg
+        self.dataset = dataset
         self.cat = cat
         self.input_ntuples = input_ntuples
+        self.tolerance = 200
 
         self.load_config()
         self.load_input()
@@ -46,12 +48,7 @@ class ParquetDataset:
         if self.schema == "coffea":
             datasets = list(self.columns[sample].keys())
         elif self.schema == "parquet":
-            datasets_all = [dataset for dataset, d in self.cutflow.items() if d.get(sample, None) != None]
-            datasets = []
-            for dataset in datasets_all:
-                for sample, nevt in self.cutflow[dataset].items():
-                    if nevt == self.nevents:
-                        datasets.append(dataset)
+            datasets = [self.dataset]
         else:
             raise ValueError(f"Schema {self.schema} not recognized.")
 
@@ -68,9 +65,11 @@ class ParquetDataset:
             return list(self.columns.keys())
         elif self.schema == "parquet":
             samples = []
-            datasets = list(self.cutflow.keys())
-            for dataset in datasets:
-                for sample, nevt in self.cutflow[dataset].items():
+            for sample, nevt in self.cutflow[self.dataset].items():
+                if self.tolerance != None:
+                    if np.isclose(nevt, self.nevents, atol=self.tolerance):
+                        samples.append(sample)
+                else:
                     if nevt == self.nevents:
                         samples.append(sample)
             if len(samples) == 0:

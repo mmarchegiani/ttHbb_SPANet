@@ -8,6 +8,8 @@ features:
       btag_L: btag_L
       btag_M: btag_M
       btag_H: btag_H
+      btag_CvL: btagDeepFlavCvL
+      btag_CvB: btagDeepFlavCvB
     LeptonGood:
       pt: pt
       eta: eta
@@ -33,6 +35,7 @@ features:
       ttbb: ttbb
       ttcc: ttcc
       ttlf: ttlf
+      tthbb_transformed: tthbb_transformed
 
   by_sample: {}
 

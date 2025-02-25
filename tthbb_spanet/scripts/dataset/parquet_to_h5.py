@@ -1,6 +1,6 @@
 import argparse
 
-from tthbb_spanet.lib.dataset.h5 import H5Dataset
+from tthbb_spanet.lib.dataset.spanet_dataset import SPANetDataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
@@ -11,18 +11,16 @@ if __name__ == '__main__':
     parser.add_argument('--no_shuffle', action='store_true', help='If set, do not shuffle the dataset')
     parser.add_argument('--reweigh', action='store_true', help='If set, scale event weights by a factor as specified in the configuration file')
     parser.add_argument('--entrystop', type=int, default=None, required=False, help='Number of events to process')
-    parser.add_argument('--data', action='store_true', help='Flag to indicate that the input contains data events')
 
     args = parser.parse_args()
 
-    dataset = H5Dataset(
+    dataset = SPANetDataset(
         args.input,
-        args.output,
         args.cfg,
-        args.fully_matched,
         (not args.no_shuffle),
         args.reweigh,
         args.entrystop,
-        args.data
+        False,
+        args.fully_matched
     )
-    dataset.save_h5_all()
+    dataset.save(args.output)

@@ -75,15 +75,16 @@ if not args.no_shuffle:
     # Generate a list of indices and shuffle it
     shuffled_indices = np.random.permutation(num_entries)
     # Shuffle the combined data using the shuffled indices
-    shuffled_data = shuffle_data(combined_data, shuffled_indices)
+    combined_data = shuffle_data(combined_data, shuffled_indices)
 
 # Check if the output file already exists
 if not args.overwrite and os.path.exists(args.output):
     raise Exception(f"Output file {args.output} already exists")
 
 # Write the shuffled data to the new h5 file
+print("Writing the data to the output file")
 with h5py.File(args.output, 'w') as f:
-    write_data(f, shuffled_data)
+    write_data(f, combined_data)
 
 msg = f"Data from {args.input} has been merged into {args.output}"
 if not args.no_shuffle:

@@ -22,6 +22,8 @@ features:
       btag_L: btag_L
       btag_M: btag_M
       btag_H: btag_H
+      btag_CvL: btagDeepFlavCvL
+      btag_CvB: btagDeepFlavCvB
     JetGoodMatched:
       pt: pt
       eta: eta
@@ -31,6 +33,8 @@ features:
       btag_L: btag_L
       btag_M: btag_M
       btag_H: btag_H
+      btag_CvL: btagDeepFlavCvL
+      btag_CvB: btagDeepFlavCvB
     Generator:
       pdgid1: id1
       pdgid2: id2

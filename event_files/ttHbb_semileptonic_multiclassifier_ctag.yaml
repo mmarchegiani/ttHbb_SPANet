@@ -6,6 +6,8 @@ INPUTS:
             sin_phi: normalize
             cos_phi: normalize
             btag: none
+            btag_CvL: none
+            btag_CvB: none
 
     GLOBAL:
         Met:

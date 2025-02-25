@@ -22,7 +22,7 @@ INPUTS:
             cos_phi: normalize
             is_electron: normalize
         Event:
-            ht: normalize
+            ht: log_normalize
 EVENT:
     t1:
         - q1

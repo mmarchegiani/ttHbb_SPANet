@@ -1,7 +1,7 @@
 #!/bin/bash
 SPANET_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/dev/SPANet
 TTHBB_SPANET_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet
-NUM_GPU=4
+NUM_GPU=1
 
 # Create venv in local job dir
 python -m venv myenv --system-site-packages

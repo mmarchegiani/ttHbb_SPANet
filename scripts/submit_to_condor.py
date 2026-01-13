@@ -71,7 +71,13 @@ sub['request_gpus'] = f"{args.ngpu}"
 sub['requirements'] = '!regexp("MIG", TARGET.Gpus_DeviceName)'
 
 if args.good_gpus:
-    sub['requirements'] = 'regexp("A100", TARGET.GPUs_DeviceName) || regexp("V100", TARGET.GPUs_DeviceName) || regexp("H100", TARGET.GPUs_DeviceName)'
+    sub['requirements'] = (
+    '(regexp("A100", TARGET.GPUs_DeviceName) || '
+    'regexp("V100", TARGET.GPUs_DeviceName) || '
+    'regexp("H100", TARGET.GPUs_DeviceName)) && '
+    '!regexp("MIG", TARGET.GPUs_DeviceName)'
+)
+
 
 print("Submission parameters:")
 print(sub, end="\n\n")

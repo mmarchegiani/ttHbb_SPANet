@@ -47,12 +47,12 @@ sub = htcondor.Submit()
 if interactive:
     sub['InteractiveJob'] = True
 
-if model in ["jet_assignment", "classification", "classification_balance_weights", "test_validation_loss", "test_mdmm_loss"]:
+if model in ["jet_assignment", "classification", "classification_balance_weights", "classification_balance_weights_semileptonic", "test_validation_loss", "test_mdmm_loss"]:
     sub['Executable'] = f"{basedir}/jobs/{model}.sh"
     sub['arguments'] = f"{args.options_file} {args.log_dir}"
-    sub['Output'] = f"{basedir}/jobs/output/{model}-$(ClusterId).$(ProcId).out"
-    sub['Error'] = f"{basedir}/jobs/error/{model}-$(ClusterId).$(ProcId).err"
-    sub['Log'] = f"{basedir}/jobs/log/{model}-$(ClusterId).log"
+    sub['Output'] = f"{args.log_dir}/jobs/output/{model}-$(ClusterId).$(ProcId).out"
+    sub['Error']  = f"{args.log_dir}/jobs/error/{model}-$(ClusterId).$(ProcId).err"
+    sub['Log']    = f"{args.log_dir}/jobs/log/{model}-$(ClusterId).log"
     sub['MY.SendCredential'] = True
     sub['MY.SingularityImage'] = '"/cvmfs/unpacked.cern.ch/registry.hub.docker.com/cmsml/cmsml:latest"'
     sub['+JobFlavour'] = f'"{job_flavour}"'
@@ -66,6 +66,9 @@ if args.checkpoint:
 # GPU and CPU requirements
 sub['request_cpus'] = f"{args.ncpu}"
 sub['request_gpus'] = f"{args.ngpu}"
+
+# Fix for CUDA issues on some nodes
+sub['requirements'] = '!regexp("MIG", TARGET.Gpus_DeviceName)'
 
 if args.good_gpus:
     sub['requirements'] = 'regexp("A100", TARGET.GPUs_DeviceName) || regexp("V100", TARGET.GPUs_DeviceName) || regexp("H100", TARGET.GPUs_DeviceName)'

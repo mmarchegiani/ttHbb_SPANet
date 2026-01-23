@@ -58,8 +58,8 @@ class DCTRDataset(Dataset):
         if cfg_spanet.get("event_file", None) is None:
             raise ValueError("SPANet event file path not provided in the configuration file.")
         # Load event file (YAML format)
-        print("Loading SPANet event file from", cfg_spanet.event_file)
-        with open(event_file, "r") as f:
+        print("Loading SPANet event file from", cfg_spanet["event_file"])
+        with open(cfg_spanet["event_file"], "r") as f:
             event_file = yaml.safe_load(f)
 
         jet_inputs = event_file["INPUTS"]["SEQUENTIAL"]["Jet"]

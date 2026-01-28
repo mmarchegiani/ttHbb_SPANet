@@ -16,14 +16,15 @@ from coffea.processor.accumulator import column_accumulator
 from coffea.processor import accumulate
 
 class ParquetDataset:
-    def __init__(self, input_file, output_file, cfg, dataset, cat="semilep_LHE", input_ntuples=None):
+    # default category set to baseline/nominal after the cutflow change that adds variations in pocketcoffea
+    def __init__(self, input_file, output_file, cfg, dataset, cat="baseline/nominal", input_ntuples=None):
         self.input_file = input_file
         self.output_file = output_file
         self.cfg = cfg
         self.dataset = dataset
         self.cat = cat
         self.input_ntuples = input_ntuples
-        self.tolerance = 200
+        self.tolerance = 5
 
         self.load_config()
         self.load_input()
@@ -65,13 +66,18 @@ class ParquetDataset:
             return list(self.columns.keys())
         elif self.schema == "parquet":
             samples = []
+            print(f"DEBUG: Cutflow keys for dataset '{self.dataset}':")
             for sample, nevt in self.cutflow[self.dataset].items():
-                if self.tolerance != None:
-                    if np.isclose(nevt, self.nevents, atol=self.tolerance):
+                nevt_val = nevt["nominal"] if isinstance(nevt, dict) else nevt
+                print(f"  - {sample}: {nevt_val} events")
+                if self.tolerance != None:                    
+                    if np.isclose(nevt_val, self.nevents, atol=self.tolerance):
                         samples.append(sample)
                 else:
                     if nevt == self.nevents:
                         samples.append(sample)
+            print(f'Samples: {samples}')
+            #breakpoint()
             if len(samples) == 0:
                 raise ValueError(f"No sample found with {self.nevents} events.")
             return samples
@@ -94,7 +100,7 @@ class ParquetDataset:
                 raise ValueError(f"Event category `{self.cat}` not found in the input file.")
             self.sum_genweights = self.df["sum_genweights"]
             self.cutflow = self.df["cutflow"][self.cat]
-
+            
         if self.input_ntuples:
             self.schema = "parquet"
             print("Reading input ntuples: ", self.input_ntuples)
@@ -218,13 +224,20 @@ class ParquetDataset:
                     self.zipped_dict[sample][collection] = ak.flatten(ak.zip(self.array_dict[sample][collection], with_name='Momentum4D'))
                 else:
                     self.zipped_dict[sample][collection] = ak.zip(self.array_dict[sample][collection], with_name='Momentum4D')
+                arr = self.zipped_dict[sample][collection]
                 print(f"Collection: {collection}")
-                print("Fields: ", self.zipped_dict[sample][collection].fields)
+                print("Fields:", arr.fields)
+                print(f"Size: {len(arr)}")
 
             for collection in self.zipped_dict[sample].keys():
                 # Pad the matched collections with None if there is no matching
                 if collection in self.matched_collections_dict.keys():
                     matched_collection = self.matched_collections_dict[collection]
+
+                    if matched_collection not in self.zipped_dict[sample]:
+                        print(f"WARNING: Matched collection '{matched_collection}' not found for sample '{sample}'. Skipping.")
+                        continue
+
                     masked_arrays = ak.mask(self.zipped_dict[sample][matched_collection], self.zipped_dict[sample][matched_collection].pt==-999, None)
                     self.zipped_dict[sample][matched_collection] = masked_arrays
                     # Add the matched flag and the provenance to the matched jets
@@ -289,10 +302,12 @@ class ParquetDataset:
             if self.is_mc(sample):
                 self.zipped_dict[sample]["event"] = ak.zip({"weight" : cs["weight"].value})
 
+
     def save_parquet(self):
         '''Create the parquet files with the zipped dictionary.'''
 
         for sample in self.samples:
+            
             # The Momentum4D arrays are zipped together to form the final dictionary of arrays.
             print("Zipping the collections into a single dictionary...")
             df_out = ak.zip(self.zipped_dict[sample], depth_limit=1)

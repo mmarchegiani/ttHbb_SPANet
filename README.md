@@ -45,13 +45,21 @@ python -m spanet.train --help
 
 ## Dataset creation
 ### Coffea to Parquet conversion
-In order to create the `.parquet` dataset from the `.coffea` output file, one can use the following command:
+In order to create the `.parquet` dataset starting from the ntuples saved in parquet format (chunk-by-chunk), 4 arguments are needed:
+
+- `-i`: the `.coffea` output file, which is used to retrieve the datasets metadata
+- `--cfg`: the YAML config file with the definition of the collections and variables to save, padding of variables, etc.
+- `--ntuples`: the path to the folder where the chunk-by-chunk parquet files are saved
+- `-o`: the path of the output parquet file
+- `--dataset`: the dataset name as found in the datasets metadata in the `.coffea` file
+
+Example:
 ```bash
 cd ttHbb_SPANet
-python scripts/dataset/coffea_to_parquet.py -i input.coffea -o output_folder
+python scripts/dataset/coffea_to_parquet.py -i input.coffea --cfg parameters/my_config.yaml -o /path/to/output_ttHbb.parquet --ntuples /path/to/my/raw/ntuples --dataset ttHbb
 ```
 
-The script will produce an output file for each sample in the `.parquet` format, saved in the folder `output_folder`.
+The script will produce an output file for the dataset `ttHbb` in the `.parquet` format, saved in the file `/path/to/output_ttHbb.parquet`.
 
 ### Parquet to H5 conversion
 Once the `.parquet` file is saved, the `.h5` file in the SPANet format can be produced using the following command:

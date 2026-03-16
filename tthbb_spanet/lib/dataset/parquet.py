@@ -66,11 +66,14 @@ class ParquetDataset:
         elif self.schema == "parquet":
             samples = []
             for sample, nevt in self.cutflow[self.dataset].items():
+                # Extract .value if this is a column_accumulator
+                nevt_val = nevt.value if hasattr(nevt, "value") else nevt
+                nevt_val = nevt_val['nominal']
                 if self.tolerance != None:
-                    if np.isclose(nevt, self.nevents, atol=self.tolerance):
+                    if np.isclose(nevt_val, self.nevents, atol=self.tolerance):
                         samples.append(sample)
                 else:
-                    if nevt == self.nevents:
+                    if nevt_val == self.nevents:
                         samples.append(sample)
             if len(samples) == 0:
                 raise ValueError(f"No sample found with {self.nevents} events.")
@@ -226,7 +229,7 @@ class ParquetDataset:
                 if collection in self.matched_collections_dict.keys():
                     matched_collection = self.matched_collections_dict[collection]
                     masked_arrays = ak.mask(self.zipped_dict[sample][matched_collection], self.zipped_dict[sample][matched_collection].pt==-999, None)
-                    self.zipped_dict[sample][matched_collection] = masked_arrays
+                    #self.zipped_dict[sample][matched_collection] = masked_arrays
                     # Add the matched flag and the provenance to the matched jets
                     if collection == "JetGood":
                         is_matched = ~ak.is_none(masked_arrays, axis=1)
@@ -302,4 +305,5 @@ class ParquetDataset:
             else:
                 output_file = self.output_file
             print(f"Saving the output dataset to file: {output_file}")
+            #breakpoint()
             ak.to_parquet(df_out, output_file)

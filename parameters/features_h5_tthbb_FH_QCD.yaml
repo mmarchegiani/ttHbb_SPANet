@@ -1,0 +1,33 @@
+input:
+  Jet: [pt, eta, phi, btag, btag_L, btag_M, btag_T, btag_CvL, btag_CvB, btag_QvG, btag_XT, btag_XXT]
+  Met: [pt, phi, m, eta]
+  Event: [ht]
+
+collection:
+  Jet: JetGood
+  Met: MET
+
+particles: [t1, t2, h]
+
+mapping_sample:
+  ttHTobb: tthbb
+  tt+B: ttbb
+  tt+C: ttcc
+  tt+LF: ttlf
+
+mapping_encoding:
+  signal:
+    ttHTobb: 1
+    tt+B: 2
+    tt+C: 3
+    tt+LF: 4
+
+classification:
+  EVENT:
+    - tthbb
+    - ttbb
+    - ttcc
+    - ttlf
+    - signal
+
+frac_train: 0.8

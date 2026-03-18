@@ -1,0 +1,17 @@
+input:
+  Jet: [MASK, pt, eta, sin_phi, cos_phi, btag, btag_L, btag_M, btag_T, btag_CvL, btag_CvB, btag_QvG, btag_XT, btag_XXT]
+  Met: [pt, eta, sin_phi, cos_phi]
+  Event: [ht]
+
+collection:
+  Jet: JetGood
+  Met: MET
+
+particles: [t1, t2, h]
+
+mapping_sample:
+  TTH_Hto2B: tthbb
+
+classification: {}
+
+test_size: 0.2

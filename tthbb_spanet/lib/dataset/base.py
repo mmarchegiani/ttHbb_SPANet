@@ -54,7 +54,16 @@ class Dataset:
     def get_year(self, input_file):
         '''Get the sample data-taking year from the input file name.'''
         year_list = []
-        years = ["2016_PreVFP", "2016_PostVFP", "2017", "2018"]
+        years = [
+            "2016_PreVFP",
+            "2016_PostVFP",
+            "2017",
+            "2018",
+            "2022_preEE",
+            "2022_postEE",
+            "2023_preBPix",
+            "2023_postBPix",
+        ]
         for year in years:
             if year in input_file:
                 year_list.append(year)

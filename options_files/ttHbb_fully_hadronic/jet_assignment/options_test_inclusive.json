@@ -24,10 +24,10 @@
     "normalization": "LayerNorm",
     "masking": "Multiplicative",
     "linear_prelu_activation": 1,
-    "event_info_file": "/afs/cern.ch/user/s/sedurgut/eos/ttHbb_SPANet/event_files/ttHbb_fully_hadronic/jet_assignment.yaml",
-    "training_file": "/afs/cern.ch/user/s/sedurgut/eos/ttHbb_SPANet/datasets/jet_assignment/ttHbb_FH_Run3_signal_train_7505074.h5",
+    "event_info_file": "/home/export/sdurgut/scratch/ttHbb_SPANet/event_files/ttHbb_fully_hadronic/jet_assignment.yaml",
+    "training_file": "/home/export/sdurgut/training_files/h5/ttHbb_FH_small_train_1600.h5",
     "validation_file": "",
-    "testing_file": "/afs/cern.ch/user/s/sedurgut/eos/ttHbb_SPANet/datasets/jet_assignment/ttHbb_FH_Run3_signal_test_1876269.h5",
+    "testing_file": "/home/export/sdurgut/training_files/h5/ttHbb_FH_small_test_400.h5",
     "normalize_features": 1,
     "limit_to_num_jets": 0,
     "balance_particles": 1,
@@ -61,5 +61,5 @@
     "verbose_output": false,
     "usable_gpus": "",
     "trial_time": "",
-    "trial_output_dir": "/afs/cern.ch/user/s/sedurgut/eos/ttHbb_SPANet/spanet_output/my_model"
+    "trial_output_dir": "/home/export/sdurgut/scratch/ttHbb_SPANet/spanet_output"
 }

@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from collections import defaultdict
+from collections import Counter
 
 import numpy as np
 import awkward as ak
@@ -33,7 +34,8 @@ class SPANetDataset(Dataset):
         super().load_config()
         self.input_features = self.cfg["input"]
         self.collection = self.cfg["collection"]
-        self.targets = self.cfg["particles"]
+        self.target_definitions = self.cfg.get("target_definitions", None)
+        self.targets = list(self.target_definitions.keys()) if self.target_definitions else self.cfg["particles"]
         self.classification_targets = self.cfg["classification"]
 
     def select_fully_matched(self):
@@ -81,6 +83,10 @@ class SPANetDataset(Dataset):
         jets = df[self.collection["Jet"]]
         indices = ak.local_index(jets)
 
+        if self.target_definitions:
+            self.create_targets_from_definitions(jets, indices)
+            return
+
         for target in self.targets:
             if target == "h":
                 mask = jets.prov == 1 # H->b1b2
@@ -116,6 +122,39 @@ class SPANetDataset(Dataset):
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
             else:
                 raise NotImplementedError
+
+    def create_targets_from_definitions(self, jets, indices):
+        """Create target indices from cfg target_definitions.
+
+        Example expected config format:
+            target_definitions:
+              t1: {q1: 5, q2: 5, b: 2}
+              t2: {q1: 4, q2: 4, b: 3}
+              h:  {b1: 1, b2: 1}
+        """
+        for target, daughter_to_prov in self.target_definitions.items():
+            # Count how many daughters are expected from each provenance code.
+            prov_counts = Counter(int(prov) for prov in daughter_to_prov.values())
+
+            # For each provenance, build a padded index matrix with the required width.
+            prov_indices = {}
+            for prov, count in prov_counts.items():
+                mask = jets.prov == prov
+                prov_indices[prov] = ak.fill_none(ak.pad_none(indices[mask], count), -1)
+
+            # Track which slot to consume for each provenance while iterating daughters.
+            prov_offsets = defaultdict(int)
+            for daughter, prov in daughter_to_prov.items():
+                prov = int(prov)
+                offset = prov_offsets[prov]
+                daughter_index = prov_indices[prov][:, offset]
+                prov_offsets[prov] += 1
+                self.file.create_dataset(
+                    f"{SpecialKey.Targets.value}/{target}/{daughter}",
+                    np.shape(daughter_index),
+                    dtype='int64',
+                    data=daughter_index
+                )
 
     def create_classifications(self, df):
         '''Create the classification targets in the h5 file.'''

@@ -5,15 +5,9 @@ INPUTS:
             eta: normalize
             sin_phi: normalize
             cos_phi: normalize
-            btag: none
             btag_L: none
             btag_M: none
             btag_T: none
-            btag_CvL: none
-            btag_CvB: none
-            btag_QvG: none
-            btag_XT: none
-            btag_XXT: none
 
     GLOBAL:
         Met:

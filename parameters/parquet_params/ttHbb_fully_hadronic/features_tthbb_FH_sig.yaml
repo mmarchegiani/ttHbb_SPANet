@@ -1,19 +1,5 @@
 features:
   common:
-    #Parton:
-    #  pt: pt
-    #  eta: eta
-    #  phi: phia
-    #  mass: mass
-    #  pdgId: pdgId
-    #  prov: provenance
-    #PartonMatched:
-    #  pt: pt
-    #  eta: eta
-    #  phi: phi
-    #  mass: mass
-    #  pdgId: pdgId
-    #  prov: provenance
     JetGood:
       pt: pt
       eta: eta

@@ -1,3 +1,4 @@
+#description: "Features for jet assignment in ttHbb fully hadronic channel"
 input:
   Jet: [MASK, pt, eta, sin_phi, cos_phi, btag, btag_L, btag_M, btag_T, btag_CvL, btag_CvB, btag_QvG, btag_XT, btag_XXT]
   Met: [pt, eta, sin_phi, cos_phi]

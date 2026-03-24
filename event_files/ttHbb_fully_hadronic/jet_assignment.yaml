@@ -34,6 +34,8 @@ EVENT:
 PERMUTATIONS:
     t1:
         - [q1, q2]
+    t2:
+        - [q1, q2]
     h:
         - [b1, b2]
 

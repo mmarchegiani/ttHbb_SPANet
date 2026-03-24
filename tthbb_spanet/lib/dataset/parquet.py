@@ -1,10 +1,14 @@
 import os
 from collections import defaultdict
 
-import numba
 import vector
 vector.register_awkward()
-vector.register_numba()
+try:
+    import numba  # noqa: F401
+    vector.register_numba()
+except Exception:
+    # Numba acceleration is optional for parquet conversion.
+    pass
 
 import numpy as np
 import awkward as ak

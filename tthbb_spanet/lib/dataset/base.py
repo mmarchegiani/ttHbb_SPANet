@@ -3,10 +3,14 @@ from enum import Enum
 from collections import defaultdict
 from abc import ABC, abstractmethod
 
-import numba
 import vector
 vector.register_awkward()
-vector.register_numba()
+try:
+    import numba  # noqa: F401
+    vector.register_numba()
+except Exception:
+    # Numba is optional for dataset conversion and can be broken in mixed envs.
+    pass
 
 import numpy as np
 import awkward as ak
@@ -115,6 +119,7 @@ class Dataset:
         # Read the parquet files
         print(f"Reading {len(self.input_files)} parquet files: ", self.input_files)
         dfs = []
+        remaining_entries = self.entrystop
         for input_file in self.input_files:
             print("Reading file: ", input_file)
             df = ak.from_parquet(input_file)
@@ -133,10 +138,24 @@ class Dataset:
                 # This is needed in order to have a 1D array with one year string per event
                 df["metadata"] = ak.with_field(df.metadata, year[:,0], "year")
 
+            # If entrystop is set, cap per-file contribution and stop reading
+            # once enough events are collected.
+            if remaining_entries is not None:
+                if remaining_entries <= 0:
+                    break
+                if len(df) > remaining_entries:
+                    df = df[:remaining_entries]
+                remaining_entries -= len(df)
+
             dfs.append(df)
+            if remaining_entries is not None and remaining_entries <= 0:
+                break
+
+        if len(dfs) == 0:
+            raise ValueError("No events were loaded from input parquet files.")
         # Return the concatenated dataframe
         # If shuffle is True, the events are randomly shuffled
-        df_concat = ak.concatenate(dfs)
+        df_concat = ak.concatenate(dfs) if len(dfs) > 1 else dfs[0]
         if self.shuffle:
             df_concat = df_concat[np.random.permutation(len(df_concat))]
         if self.entrystop:

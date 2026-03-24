@@ -95,8 +95,8 @@ class SPANetDataset(Dataset):
                 # The None values are filled with -1 (a nan value).
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
-                index_b1 = indices_prov[:,0]
-                index_b2 = indices_prov[:,1]
+                index_b1 = self._sanitize_target_indices(indices_prov[:,0])
+                index_b2 = self._sanitize_target_indices(indices_prov[:,1])
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b1", np.shape(index_b1), dtype='int64', data=index_b1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
@@ -105,11 +105,11 @@ class SPANetDataset(Dataset):
                 mask = jets.prov == 5 # W->q1q2 from t1
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
-                index_q1 = indices_prov[:,0]
-                index_q2 = indices_prov[:,1]
+                index_q1 = self._sanitize_target_indices(indices_prov[:,0])
+                index_q2 = self._sanitize_target_indices(indices_prov[:,1])
 
                 mask = jets.prov == 2 # t1->Wb
-                index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                index_b_hadr = self._sanitize_target_indices(ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0])
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
@@ -117,7 +117,7 @@ class SPANetDataset(Dataset):
 
             elif target == "t2":
                 mask = jets.prov == 3 # t2->b
-                index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                index_b_lep = self._sanitize_target_indices(ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0])
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
             else:
@@ -148,6 +148,7 @@ class SPANetDataset(Dataset):
                 prov = int(prov)
                 offset = prov_offsets[prov]
                 daughter_index = prov_indices[prov][:, offset]
+                daughter_index = self._sanitize_target_indices(daughter_index)
                 prov_offsets[prov] += 1
                 self.file.create_dataset(
                     f"{SpecialKey.Targets.value}/{target}/{daughter}",
@@ -155,6 +156,12 @@ class SPANetDataset(Dataset):
                     dtype='int64',
                     data=daughter_index
                 )
+
+    @staticmethod
+    def _sanitize_target_indices(indices):
+        # Inputs are padded/clipped to 16 jets in get_object_features, so any target index
+        # outside [0, 15] cannot be represented and must be marked as unmatched.
+        return ak.where(indices >= 16, -1, indices)
 
     def create_classifications(self, df):
         '''Create the classification targets in the h5 file.'''

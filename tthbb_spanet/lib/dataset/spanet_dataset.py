@@ -1,7 +1,6 @@
 import os
 from enum import Enum
 from collections import defaultdict
-from collections import Counter
 
 import numpy as np
 import awkward as ak
@@ -34,12 +33,12 @@ class SPANetDataset(Dataset):
         super().load_config()
         self.input_features = self.cfg["input"]
         self.collection = self.cfg["collection"]
-        self.target_definitions = self.cfg.get("target_definitions", None)
-        self.targets = list(self.target_definitions.keys()) if self.target_definitions else self.cfg["particles"]
+        self.targets = self.cfg["particles"]
         self.classification_targets = self.cfg["classification"]
 
     def select_fully_matched(self):
         '''Select only fully matched events.'''
+        #update to select only fully matched events for the fully hadronic channel, 
         mask_fullymatched = ak.sum(self.dataset.df[self.collection["Jet"]].matched == True, axis=1) >= 6
         df = self.dataset.df[mask_fullymatched]
         jets = df[self.collection["Jet"]]
@@ -48,11 +47,15 @@ class SPANetDataset(Dataset):
         jets_higgs = jets[jets.prov == 1]
         mask_match = ak.num(jets_higgs) == 2
 
-        jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
-        mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
+        #jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
+        #mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
+        jets_w_top = jets[(jets.prov == 5) | (jets.prov == 2)]
+        mask_match = mask_match & (ak.num(jets_w_top) == 3)
 
-        jets_tlep = jets[jets.prov == 3]
-        mask_match = mask_match & (ak.num(jets_tlep) == 1)
+        #jets_tlep = jets[jets.prov == 3]
+        #mask_match = mask_match & (ak.num(jets_tlep) == 1)
+        jets_w_antitop = jets[(jets.prov == 6) | (jets.prov == 3)]
+        mask_match = mask_match & (ak.num(jets_w_antitop) == 3)
 
         df = df[mask_match]
         print(f"Selected {len(df)} fully matched events")
@@ -83,10 +86,6 @@ class SPANetDataset(Dataset):
         jets = df[self.collection["Jet"]]
         indices = ak.local_index(jets)
 
-        if self.target_definitions:
-            self.create_targets_from_definitions(jets, indices)
-            return
-
         for target in self.targets:
             if target == "h":
                 mask = jets.prov == 1 # H->b1b2
@@ -95,8 +94,8 @@ class SPANetDataset(Dataset):
                 # The None values are filled with -1 (a nan value).
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
-                index_b1 = self._sanitize_target_indices(indices_prov[:,0])
-                index_b2 = self._sanitize_target_indices(indices_prov[:,1])
+                index_b1 = indices_prov[:,0]
+                index_b2 = indices_prov[:,1]
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b1", np.shape(index_b1), dtype='int64', data=index_b1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
@@ -105,11 +104,11 @@ class SPANetDataset(Dataset):
                 mask = jets.prov == 5 # W->q1q2 from t1
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
-                index_q1 = self._sanitize_target_indices(indices_prov[:,0])
-                index_q2 = self._sanitize_target_indices(indices_prov[:,1])
+                index_q1 = indices_prov[:,0]
+                index_q2 = indices_prov[:,1]
 
                 mask = jets.prov == 2 # t1->Wb
-                index_b_hadr = self._sanitize_target_indices(ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0])
+                index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
@@ -117,51 +116,11 @@ class SPANetDataset(Dataset):
 
             elif target == "t2":
                 mask = jets.prov == 3 # t2->b
-                index_b_lep = self._sanitize_target_indices(ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0])
+                index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
             else:
                 raise NotImplementedError
-
-    def create_targets_from_definitions(self, jets, indices):
-        """Create target indices from cfg target_definitions.
-
-        Example expected config format:
-            target_definitions:
-              t1: {q1: 5, q2: 5, b: 2}
-              t2: {q1: 4, q2: 4, b: 3}
-              h:  {b1: 1, b2: 1}
-        """
-        for target, daughter_to_prov in self.target_definitions.items():
-            # Count how many daughters are expected from each provenance code.
-            prov_counts = Counter(int(prov) for prov in daughter_to_prov.values())
-
-            # For each provenance, build a padded index matrix with the required width.
-            prov_indices = {}
-            for prov, count in prov_counts.items():
-                mask = jets.prov == prov
-                prov_indices[prov] = ak.fill_none(ak.pad_none(indices[mask], count), -1)
-
-            # Track which slot to consume for each provenance while iterating daughters.
-            prov_offsets = defaultdict(int)
-            for daughter, prov in daughter_to_prov.items():
-                prov = int(prov)
-                offset = prov_offsets[prov]
-                daughter_index = prov_indices[prov][:, offset]
-                daughter_index = self._sanitize_target_indices(daughter_index)
-                prov_offsets[prov] += 1
-                self.file.create_dataset(
-                    f"{SpecialKey.Targets.value}/{target}/{daughter}",
-                    np.shape(daughter_index),
-                    dtype='int64',
-                    data=daughter_index
-                )
-
-    @staticmethod
-    def _sanitize_target_indices(indices):
-        # Inputs are padded/clipped to 16 jets in get_object_features, so any target index
-        # outside [0, 15] cannot be represented and must be marked as unmatched.
-        return ak.where(indices >= 16, -1, indices)
 
     def create_classifications(self, df):
         '''Create the classification targets in the h5 file.'''

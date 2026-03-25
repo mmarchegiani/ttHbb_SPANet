@@ -108,17 +108,27 @@ class SPANetDataset(Dataset):
                 index_q2 = indices_prov[:,1]
 
                 mask = jets.prov == 2 # t1->Wb
-                index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                index_b_top= ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
-                self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", np.shape(index_b_hadr), dtype='int64', data=index_b_hadr)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", np.shape(index_b_top), dtype='int64', data=index_b_top)
 
             elif target == "t2":
                 mask = jets.prov == 3 # t2->b
-                index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                #index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                indices_prov = ak.fill_none(ak.pad_none(indices[mask], 1), -1)
+                
+                mask = jets.prov == 6 # t2->Wb
+                index_q1 = indices_prov[:,0]
+                index_q2 = indices_prov[:,1]
 
-                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
+                mask = jets.prov == 3 # t2->Wb
+                index_b_antitop = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q1", np.shape(index_q1), dtype='int64', data=index_q1)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q2", np.shape(index_q2), dtype='int64', data=index_q2)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_antitop), dtype='int64', data=index_b_antitop)
             else:
                 raise NotImplementedError
 

@@ -88,7 +88,7 @@ class SPANetDataset(Dataset):
 
         for target in self.targets:
             if target == "h":
-                mask = jets.prov == 1 # H->b1b2
+                mask = jets.prov == 1 # H->b1b2 
                 # We select the local indices of jets matched with the Higgs
                 # The indices are padded with None such that there are 2 entries per event
                 # The None values are filled with -1 (a nan value).
@@ -101,13 +101,13 @@ class SPANetDataset(Dataset):
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
 
             elif target == "t1":
-                mask = jets.prov == 5 # W->q1q2 from t1
+                mask = jets.prov == 5 # decay quarks from W (from top)  
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
                 index_q1 = indices_prov[:,0]
                 index_q2 = indices_prov[:,1]
 
-                mask = jets.prov == 2 # t1->Wb
+                mask = jets.prov == 2 # bquarks from top 
                 index_b_top= ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
@@ -115,15 +115,12 @@ class SPANetDataset(Dataset):
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", np.shape(index_b_top), dtype='int64', data=index_b_top)
 
             elif target == "t2":
-                mask = jets.prov == 3 # t2->b
-                #index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                mask = jets.prov == 6 # non-b decay quarks from  W (from antitop) 
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 1), -1)
-                
-                mask = jets.prov == 6 # t2->Wb
                 index_q1 = indices_prov[:,0]
                 index_q2 = indices_prov[:,1]
-
-                mask = jets.prov == 3 # t2->Wb
+                
+                mask = jets.prov == 3 # bquarks from antitop 
                 index_b_antitop = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q1", np.shape(index_q1), dtype='int64', data=index_q1)

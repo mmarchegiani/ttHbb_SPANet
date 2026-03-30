@@ -1,8 +1,9 @@
-#description: "Features for jet assignment in ttHbb fully hadronic channel"
+#description: "Features for classification in ttHbb fully hadronic channel"
 input:
-  Jet: [pt, eta, phi, btag, btag_L, btag_M, btag_T, btag_CvL, btag_CvB, btag_QvG, btag_XT, btag_XXT]
+  # MASK required by SPANet JetReconstructionDataset (see INPUTS/Jet/MASK); derived from pt in parquet_to_h5
+  Jet: [MASK, pt, eta, phi, btag, btag_L, btag_M, btag_T, btag_CvL, btag_CvB, btag_QvG, btag_XT, btag_XXT]
   Met: [pt, phi, m, eta]
-  Event: [ht] # we only have the 'weight' column in the event tree, not the 'ht' column?? 
+  Event: [ht] 
 
 collection:
   Jet: JetGood

@@ -85,6 +85,26 @@ class SPANetDataset(Dataset):
     def create_targets(self, df):
         jets = df[self.collection["Jet"]]
         indices = ak.local_index(jets)
+        n_events = len(df)
+
+        # For mixed classifier datasets (e.g. signal + QCD), provenance may be unavailable.
+        # In that case, keep target tensors present but mark all assignments as unmatched.
+        if "prov" not in jets.fields:
+            for target in self.targets:
+                if target == "h":
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b1", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                elif target == "t1":
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                elif target == "t2":
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q1", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q2", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                else:
+                    raise NotImplementedError
+            return
 
         for target in self.targets:
             if target == "h":
@@ -116,7 +136,7 @@ class SPANetDataset(Dataset):
 
             elif target == "t2":
                 mask = jets.prov == 6 # non-b decay quarks from  W (from antitop) 
-                indices_prov = ak.fill_none(ak.pad_none(indices[mask], 1), -1)
+                indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
                 index_q1 = indices_prov[:,0]
                 index_q2 = indices_prov[:,1]
                 
@@ -203,6 +223,8 @@ class SPANetDataset(Dataset):
                         if not "pt" in features:
                             raise NotImplementedError
                         features_dict["MASK"] = ~(features_dict["pt"] == 0)
+                    else:
+                        raise NotImplementedError(f"MASK not found in the features for {obj}, include MASK in the features list")
                 else:
                     raise ValueError(f"Collection {collection} not found in the parquet file.")
             df_features[obj] = features_dict

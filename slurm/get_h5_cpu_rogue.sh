@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=get_h5_cpu
-#SBATCH --output=logs/result_%j.out
+#SBATCH --output=logs/get_h5_cpu_rogue/result_%j.out
 #SBATCH --partition=work
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=4G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16G
 
 set -euo pipefail
 
@@ -14,9 +14,9 @@ JOB_START_EPOCH="$(date +%s)"
 JOB_START_HUMAN="$(date '+%Y-%m-%d %H:%M:%S %Z')"
 
 PROJECT_DIR="/home/export/sdurgut/scratch/ttHbb_SPANet"
-OUTPUT_DIR="/home/export/sdurgut/scratch/parquet_to_h5_output/classification"
+OUTPUT_DIR="/home/export/sdurgut/scratch/parquet_to_h5_output/classification/with_MASK"
 mkdir -p "$OUTPUT_DIR"
-LOG_DIR="$PROJECT_DIR/logs"
+LOG_DIR="$PROJECT_DIR/logs/get_h5_cpu_rogue/"
 mkdir -p "$LOG_DIR"
 PARQUET_BASE="/home/export/sdurgut/coffea_to_parquet_output"
 VENV_ACTIVATE="$PROJECT_DIR/SPANet/spanet_env_cpu/bin/activate"

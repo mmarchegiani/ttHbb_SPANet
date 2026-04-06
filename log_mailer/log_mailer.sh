@@ -1,25 +1,35 @@
 #!/bin/bash
-# Email the full training log on a fixed interval (default: 30 minutes).
-# Run in the background, e.g.:
-#   nohup env LOGFILE=/path/to/job.out ./log_mailer.sh >> ~/log_mailer.log 2>&1 &
+# Email the last N lines of a training log on a fixed interval.
+# Sends an immediate first email, then repeats every INTERVAL seconds.
 #
-# Override: LOGFILE, EMAIL, INTERVAL (seconds).
+# Usage:
+#   nohup bash log_mailer.sh >> ~/log_mailer.log 2>&1 &
+#
+# Override: LOGFILE, EMAIL, INTERVAL (seconds), TAIL_LINES.
 
-LOGFILE="${LOGFILE:-/home/export/sdurgut/scratch/ttHbb_SPANet/logs/classifier/btag_T/classifier_btag_T_529.out}"
+LOGFILE="${LOGFILE:-/home/export/sdurgut/scratch/ttHbb_SPANet/logs/classifier/btag_TM/classifier_btag_TM_649.out}"
 EMAIL="${EMAIL:-sdurgut@andrew.cmu.edu}"
-INTERVAL="${INTERVAL:-1800}"
+INTERVAL="${INTERVAL:-3600}"
+TAIL_LINES="${TAIL_LINES:-10}"
 
-echo "[log_mailer] started $(date -Is)  LOGFILE=$LOGF`ILE  EMAIL=$EMAIL  INTERVAL=${INTERVAL}s"
+echo "[log_mailer] started $(date -Is)  LOGFILE=$LOGFILE  EMAIL=$EMAIL  INTERVAL=${INTERVAL}s  TAIL_LINES=$TAIL_LINES"
 
-while true; do
+send_snapshot() {
   ts="$(date '+%Y-%m-%d %H:%M:%S %Z')"
   subj="Falcon log snapshot — $ts"
 
   if [[ -f "$LOGFILE" ]]; then
-    mailx -s "$subj" "$EMAIL" < "$LOGFILE" || echo "[log_mailer] mailx failed $(date -Is)" >&2
+    tail -n "$TAIL_LINES" "$LOGFILE" | mailx -s "$subj" "$EMAIL" \
+      || echo "[log_mailer] mailx failed $(date -Is)" >&2
   else
-    printf '%s\n' "Log file not found (yet): $LOGFILE" | mailx -s "Falcon log mailer — MISSING — $ts" "$EMAIL" || true
+    printf '%s\n' "Log file not found (yet): $LOGFILE" \
+      | mailx -s "Falcon log mailer — MISSING — $ts" "$EMAIL" || true
   fi
+}
 
+send_snapshot
+
+while true; do
   sleep "$INTERVAL"
+  send_snapshot
 done

@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=classifier_btag_T_gpu
+#SBATCH --job-name=classifier_btag_TM_gpu
 #SBATCH --output=logs/classifier/btag_TM/classifier_btag_TM_%j.out
 #SBATCH --partition=work
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=96G
 #SBATCH --gres=mps:50
 
 set -euo pipefail
@@ -38,4 +38,5 @@ python -m spanet.train \
   --name "classifier_btag_TM" \
   --time_limit 07:00:00:00 \
   --gpus 1 \
-  --verbose
+  --verbose \
+  --fp16

@@ -7,7 +7,7 @@
 #
 # Override: LOGFILE, EMAIL, INTERVAL (seconds), TAIL_LINES.
 
-LOGFILE="${LOGFILE:-/home/export/sdurgut/scratch/ttHbb_SPANet/logs/classifier/btag_TM/classifier_btag_TM_649.out}"
+LOGFILE="${LOGFILE:-/home/export/sdurgut/scratch/ttHbb_SPANet/logs/classifier/btag_TML_QvG/classifier_btag_TML_QvG_1006.out}"
 EMAIL="${EMAIL:-sdurgut@andrew.cmu.edu}"
 INTERVAL="${INTERVAL:-3600}"
 TAIL_LINES="${TAIL_LINES:-10}"

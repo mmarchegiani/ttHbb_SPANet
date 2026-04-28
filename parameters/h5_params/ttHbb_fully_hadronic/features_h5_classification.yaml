@@ -17,6 +17,6 @@ mapping_sample:
 
 classification:
   EVENT:
-    - signal
+    - signal23
 
 test_size: 0.2

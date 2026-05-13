@@ -19,7 +19,7 @@ setup(
         'awkward>=1.10.3,<2',
         'coffea==0.7.22',
         'h5py>=3.9',
-        'vector',
+        'vector<1.0.0',
         'omegaconf',
         'scikit-learn',
         'htcondor'

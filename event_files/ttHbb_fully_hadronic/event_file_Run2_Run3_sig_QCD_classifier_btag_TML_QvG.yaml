@@ -1,0 +1,45 @@
+INPUTS:
+    SEQUENTIAL:
+        Jet:
+            pt: log_normalize
+            eta: normalize
+            phi: normalize
+            btag_T: normalize
+            btag_M: normalize
+            btag_L: normalize
+            btag_QvG: normalize
+
+    GLOBAL:
+        Met:
+            pt: log_normalize
+            phi: normalize
+            m: normalize
+
+        Event:
+            ht: log_normalize
+EVENT:
+    t1:
+        - q1
+        - q2
+        - b
+    t2:
+        - q1
+        - q2
+        - b
+    h:
+        - b1
+        - b2
+       
+PERMUTATIONS:
+    t1:
+        - [q1, q2]
+    t2:
+        - [q1, q2]
+    h:
+        - [b1, b2]
+
+REGRESSIONS:
+
+CLASSIFICATIONS:
+    EVENT:
+        - signal

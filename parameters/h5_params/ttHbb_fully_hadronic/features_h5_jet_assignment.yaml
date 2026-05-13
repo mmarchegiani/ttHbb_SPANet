@@ -1,0 +1,33 @@
+#description: "Features for jet assignment in ttHbb fully hadronic channel"
+input:
+  Jet: [MASK, pt, eta, btag, btag_L, btag_M, btag_T, btag_CvL, btag_CvB, btag_QvG, btag_XT, btag_XXT]
+  Met: [pt, eta, sin_phi, cos_phi]
+  Event: [ht]
+
+collection:
+  Jet: JetGood
+  Met: MET
+
+particles: [t1, t2, h]
+
+# Target daughter -> JetGoodMatched provenance mapping used when building TARGETS/*
+# NOTE: verify provenance codes in your parquet if they differ.
+target_definitions:
+  t1:
+    q1: 5
+    q2: 5
+    b: 2
+  t2:
+    q1: 6
+    q2: 6
+    b: 3
+  h:
+    b1: 1
+    b2: 1
+
+mapping_sample:
+  TTH_Hto2B: tthbb
+
+classification: {}
+
+test_size: 0.2

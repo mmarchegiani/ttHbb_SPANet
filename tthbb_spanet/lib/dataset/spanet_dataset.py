@@ -38,6 +38,7 @@ class SPANetDataset(Dataset):
 
     def select_fully_matched(self):
         '''Select only fully matched events.'''
+        #update to select only fully matched events for the fully hadronic channel, 
         mask_fullymatched = ak.sum(self.dataset.df[self.collection["Jet"]].matched == True, axis=1) >= 6
         df = self.dataset.df[mask_fullymatched]
         jets = df[self.collection["Jet"]]
@@ -46,11 +47,15 @@ class SPANetDataset(Dataset):
         jets_higgs = jets[jets.prov == 1]
         mask_match = ak.num(jets_higgs) == 2
 
-        jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
-        mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
+        #jets_w_thadr = jets[(jets.prov == 5) | (jets.prov == 2)]
+        #mask_match = mask_match & (ak.num(jets_w_thadr) == 3)
+        jets_w_top = jets[(jets.prov == 5) | (jets.prov == 2)]
+        mask_match = mask_match & (ak.num(jets_w_top) == 3)
 
-        jets_tlep = jets[jets.prov == 3]
-        mask_match = mask_match & (ak.num(jets_tlep) == 1)
+        #jets_tlep = jets[jets.prov == 3]
+        #mask_match = mask_match & (ak.num(jets_tlep) == 1)
+        jets_w_antitop = jets[(jets.prov == 6) | (jets.prov == 3)]
+        mask_match = mask_match & (ak.num(jets_w_antitop) == 3)
 
         df = df[mask_match]
         print(f"Selected {len(df)} fully matched events")
@@ -80,10 +85,30 @@ class SPANetDataset(Dataset):
     def create_targets(self, df):
         jets = df[self.collection["Jet"]]
         indices = ak.local_index(jets)
+        n_events = len(df)
+
+        # For mixed classifier datasets (e.g. signal + QCD), provenance may be unavailable.
+        # In that case, keep target tensors present but mark all assignments as unmatched.
+        if "prov" not in jets.fields:
+            for target in self.targets:
+                if target == "h":
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b1", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                elif target == "t1":
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                elif target == "t2":
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q1", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q2", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                    self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", (n_events,), dtype='int64', data=-1 * np.ones(n_events, dtype=np.int64))
+                else:
+                    raise NotImplementedError
+            return
 
         for target in self.targets:
             if target == "h":
-                mask = jets.prov == 1 # H->b1b2
+                mask = jets.prov == 1 # H->b1b2 
                 # We select the local indices of jets matched with the Higgs
                 # The indices are padded with None such that there are 2 entries per event
                 # The None values are filled with -1 (a nan value).
@@ -96,24 +121,31 @@ class SPANetDataset(Dataset):
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
 
             elif target == "t1":
-                mask = jets.prov == 5 # W->q1q2 from t1
+                mask = jets.prov == 5 # decay quarks from W (from top)  
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
                 index_q1 = indices_prov[:,0]
                 index_q2 = indices_prov[:,1]
 
-                mask = jets.prov == 2 # t1->Wb
-                index_b_hadr = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                mask = jets.prov == 2 # bquarks from top 
+                index_b_top= ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
-                self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", np.shape(index_b_hadr), dtype='int64', data=index_b_hadr)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", np.shape(index_b_top), dtype='int64', data=index_b_top)
 
             elif target == "t2":
-                mask = jets.prov == 3 # t2->b
-                index_b_lep = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                mask = jets.prov == 6 # non-b decay quarks from  W (from antitop) 
+                indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
+                index_q1 = indices_prov[:,0]
+                index_q2 = indices_prov[:,1]
+                
+                mask = jets.prov == 3 # bquarks from antitop 
+                index_b_antitop = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
 
-                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_lep), dtype='int64', data=index_b_lep)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q1", np.shape(index_q1), dtype='int64', data=index_q1)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q2", np.shape(index_q2), dtype='int64', data=index_q2)
+                self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/b", np.shape(index_b_antitop), dtype='int64', data=index_b_antitop)
             else:
                 raise NotImplementedError
 
@@ -191,6 +223,8 @@ class SPANetDataset(Dataset):
                         if not "pt" in features:
                             raise NotImplementedError
                         features_dict["MASK"] = ~(features_dict["pt"] == 0)
+                    else:
+                        raise NotImplementedError(f"MASK not found in the features for {obj}, include MASK in the features list")
                 else:
                     raise ValueError(f"Collection {collection} not found in the parquet file.")
             df_features[obj] = features_dict

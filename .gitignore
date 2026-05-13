@@ -10,3 +10,4 @@ notebooks/.ipynb_checkpoints
 jobs/error
 jobs/log
 jobs/output
+training_metrics

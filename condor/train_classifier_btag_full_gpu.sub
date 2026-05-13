@@ -1,0 +1,11 @@
+executable              = train_classifier_btag_full_gpu.sh
+arguments               = $(ClusterId)$(ProcId)
+output                  = train_classifier_btag_full.$(ClusterId).$(ProcId).out
+error                   = train_classifier_btag_full.$(ClusterId).$(ProcId).err
+log                     = train_classifier_btag_full.$(ClusterId).log
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+requirements = regexp("A100", GPUs_DeviceName)
+request_GPUs = 1
+request_CPUs = 1
+queue

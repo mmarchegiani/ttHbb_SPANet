@@ -44,7 +44,7 @@ features:
     #  eta: eta
     #  phi: phi
     #  pdgId: pdgId
-    MET:
+    PuppiMET:
       pt: pt
       phi: phi
   by_sample: {}
@@ -68,7 +68,7 @@ features_pad:
       
     JetGoodMatched:
       m: 0
-    MET:
+    PuppiMET:
       m: 0
       eta: 0
   by_sample: {}

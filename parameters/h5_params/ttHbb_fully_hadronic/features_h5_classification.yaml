@@ -1,22 +1,65 @@
 #description: "Features for classification in ttHbb fully hadronic channel"
 input:
   # MASK required by SPANet JetReconstructionDataset (see INPUTS/Jet/MASK); derived from pt in parquet_to_h5
-  Jet: [MASK, pt, eta, phi, btag, btag_L, btag_M, btag_T, btag_CvL, btag_CvB, btag_QvG, btag_XT, btag_XXT]
-  Met: [pt, phi, m, eta]
-  Event: [ht] 
+  Jet: [MASK, pt, eta, phi, btag, btag_L, btag_M, btag_T, btag_XT, btag_XXT, btag_CvL, btag_CvB, btag_QvG]
+  Met: [pt, phi]
+  Event: [ht]
 
 collection:
   Jet: JetGood
-  Met: MET
+  Met: PuppiMET
 
 particles: [t1, t2, h]
 
 mapping_sample:
-  TTH_Hto2B: signal
+  TTH_Hto2B: tthbb
   QCD: qcd
+  TTto4Q_ttC: ttcc
+  TTto4Q_ttLF: ttlf
+  TTtoLNu2Q_ttC: ttcc
+  TTtoLNu2Q_ttLF: ttlf
+  TTBBto4Q_ttB: ttbb
+  TTBBtoLNu2Q_4FS_ttB: ttbb
+  TbarBQ_t-channel_4FS: singletop
+  TbarBtoLminusNuB-s-channel-4FS: singletop
+  TbarWplusto4Q: singletop
+  TbarWplustoLNu2Q: singletop
+  TBbarQ_t-channel_4FS: singletop
+  TBbartoLplusNuBbar-s-channel-4FS: singletop
+  TWminusto4Q: singletop
+  TWminustoLNu2Q: singletop
+  TTW: ttv
+  TTZ: ttv
+  Wto2Q: vjets
+  Zto2Q: vjets
+  TTHtoNon2B: tthnonbb
+
+mapping_encoding:
+  signal:
+    TTH_Hto2B: 1
+    QCD: 2
+    TTto4Q_ttC: 4
+    TTto4Q_ttLF: 3
+    TTtoLNu2Q_ttC: 4
+    TTtoLNu2Q_ttLF: 3
+    TTBBto4Q_ttB: 5
+    TTBBtoLNu2Q_4FS_ttB: 5
+    TbarBQ_t-channel_4FS: 6
+    TbarBtoLminusNuB-s-channel-4FS: 6
+    TbarWplusto4Q: 6
+    TbarWplustoLNu2Q: 6
+    TBbarQ_t-channel_4FS: 6
+    TBbartoLplusNuBbar-s-channel-4FS: 6
+    TWminusto4Q: 6
+    TWminustoLNu2Q: 6
+    TTW: 7
+    TTZ: 7
+    Wto2Q: 8
+    Zto2Q: 8
+    TTHtoNon2B: 9
 
 classification:
   EVENT:
-    - signal23
+    - signal
 
-test_size: 0.2
+frac_train: 0.8

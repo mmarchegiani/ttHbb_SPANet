@@ -223,8 +223,6 @@ class SPANetDataset(Dataset):
                         if not "pt" in features:
                             raise NotImplementedError
                         features_dict["MASK"] = ~(features_dict["pt"] == 0)
-                    else:
-                        raise NotImplementedError(f"MASK not found in the features for {obj}, include MASK in the features list")
                 else:
                     raise ValueError(f"Collection {collection} not found in the parquet file.")
             df_features[obj] = features_dict

@@ -67,6 +67,8 @@ class Dataset:
             "2022_postEE",
             "2023_preBPix",
             "2023_postBPix",
+            "2024",
+            "2025"
         ]
         for year in years:
             if year in input_file:

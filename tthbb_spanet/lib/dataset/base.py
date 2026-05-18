@@ -20,7 +20,7 @@ import omegaconf
 from omegaconf import OmegaConf
 
 class Dataset:
-    def __init__(self, input_file, cfg=None, shuffle=True, reweigh=False, entrystop=None, has_data=False, label=True):
+    def __init__(self, input_file, cfg=None, shuffle=True, reweigh=False, entrystop=None, has_data=False, label=True, lazy=False):
         # Load several input files into a list
         if type(input_file) == str:
             self.input_files = [input_file]
@@ -39,7 +39,8 @@ class Dataset:
 
         self.sample_dict = defaultdict(dict)
         self.load_config()
-        self.df = self.load_input()
+        if not lazy:
+            self.df = self.load_input()
 
     def get_sample_name(self, input_file):
         '''Get the sample name from the input file name.'''
@@ -110,54 +111,44 @@ class Dataset:
                 df["event"] = ak.with_field(df.event, factor * df.event.weight, "weight")
         return df
 
+    def _process_file(self, input_file, max_events=None):
+        '''Load and process a single parquet file, applying labels and weights.'''
+        if not os.path.exists(input_file):
+            raise ValueError(f"Input file {input_file} does not exist.")
+        if not input_file.endswith(".parquet"):
+            raise ValueError(f"Input file {input_file} should have the `.parquet` extension.")
+        print("Reading file: ", input_file)
+        df = ak.from_parquet(input_file)
+        if self.has_data and "event" not in df.fields:
+            df["event"] = ak.zip({"weight": np.ones(len(df), dtype=np.float64)})
+        if self.reweigh:
+            df = self.scale_weights(df, self.get_sample_name(input_file))
+        if self.label:
+            df = self.build_labels(df, self.get_sample_name(input_file))
+            df["metadata"] = ak.zip({"year": len(df)*[self.get_year(input_file)]})
+            year = df.metadata.year
+            df["metadata"] = ak.with_field(df.metadata, year[:,0], "year")
+        if max_events is not None and len(df) > max_events:
+            df = df[:max_events]
+        return df
+
     def load_input(self):
-        '''Load the input file.'''
-        # Check if the parquet files exist
-        for input_file in self.input_files:
-            if not os.path.exists(input_file):
-                raise ValueError(f"Input file {input_file} does not exist.")
-            if not input_file.endswith(".parquet"):
-                raise ValueError(f"Input file {input_file} should have the `.parquet` extension.")
-        # Read the parquet files
+        '''Load and concatenate all input parquet files into memory.'''
         print(f"Reading {len(self.input_files)} parquet files: ", self.input_files)
         dfs = []
         remaining_entries = self.entrystop
         for input_file in self.input_files:
-            print("Reading file: ", input_file)
-            df = ak.from_parquet(input_file)
-            # For data, save weights of 1 for all events
-            if self.has_data & (not "event" in df.fields):
-                df["event"] = ak.zip({"weight": np.ones(len(df), dtype=np.float)})
-            # Reweigh the events by a factor
-            if self.reweigh:
-                df = self.scale_weights(df, self.get_sample_name(input_file))
-            # Get sample name from the input file name
-            if self.label:
-                df = self.build_labels(df, self.get_sample_name(input_file))
-                # Add metadata to the dataframe
-                df["metadata"] = ak.zip({"year": len(df)*[self.get_year(input_file)]})
-                year = df.metadata.year
-                # This is needed in order to have a 1D array with one year string per event
-                df["metadata"] = ak.with_field(df.metadata, year[:,0], "year")
-
-            # If entrystop is set, cap per-file contribution and stop reading
-            # once enough events are collected.
-            if remaining_entries is not None:
-                if remaining_entries <= 0:
-                    break
-                if len(df) > remaining_entries:
-                    df = df[:remaining_entries]
-                remaining_entries -= len(df)
-
-            dfs.append(df)
             if remaining_entries is not None and remaining_entries <= 0:
                 break
+            df = self._process_file(input_file, remaining_entries)
+            if remaining_entries is not None:
+                remaining_entries -= len(df)
+            dfs.append(df)
 
         if len(dfs) == 0:
             raise ValueError("No events were loaded from input parquet files.")
-        # Return the concatenated dataframe
-        # If shuffle is True, the events are randomly shuffled
         df_concat = ak.concatenate(dfs) if len(dfs) > 1 else dfs[0]
+        del dfs
         if self.shuffle:
             df_concat = df_concat[np.random.permutation(len(df_concat))]
         if self.entrystop:

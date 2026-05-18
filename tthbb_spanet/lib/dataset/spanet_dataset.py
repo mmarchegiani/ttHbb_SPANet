@@ -1,10 +1,12 @@
 import os
+import gc
 from enum import Enum
 from collections import defaultdict
 
 import numpy as np
 import awkward as ak
 import h5py
+import pyarrow.parquet as pq
 
 from .base import Dataset
 
@@ -22,9 +24,16 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class SPANetDataset(Dataset):
-    def __init__(self, input_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False):
-        super().__init__(input_file, cfg, shuffle=shuffle, reweigh=reweigh, entrystop=entrystop, has_data=has_data)
+    def __init__(self, input_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False, enable_streaming=True):
+        # Streaming mode processes one file at a time and never loads all data into RAM.
+        # It requires no pre-loaded df, so use lazy=True only when streaming is active
+        # and fully_matched is off (fully_matched needs all data in memory to apply its filter).
+        self.enable_streaming = enable_streaming
         self.fully_matched = fully_matched
+        lazy = enable_streaming
+        super().__init__(input_file, cfg, shuffle=shuffle, reweigh=reweigh, entrystop=entrystop, has_data=has_data, lazy=lazy)
+        # base.__init__ already calls load_input() when lazy=False, so self.df is set.
+        # fully_matched=True forces lazy=False above, so the data is available here.
         if self.fully_matched:
             self.select_fully_matched()
 
@@ -252,6 +261,13 @@ class SPANetDataset(Dataset):
 
     def save(self, output_file):
         '''Save the h5 file for both the training and testing datasets.'''
+        if self.enable_streaming:
+            self._save_streaming(output_file)
+        else:
+            self._save_in_memory(output_file)
+
+    def _save_in_memory(self, output_file):
+        '''Save using the full in-memory dataset (used when fully_matched=True).'''
         for dataset_type in ["train", "test"]:
             print(f"Processing dataset: {dataset_type} ({len(getattr(self, dataset_type))} events)")
 
@@ -270,3 +286,154 @@ class SPANetDataset(Dataset):
             print(self.file)
             self.print()
             self.file.close()
+
+    def _save_streaming(self, output_file):
+        '''Memory-efficient save: processes one parquet file at a time.
+
+        Instead of loading all files into RAM and then writing, this method reads
+        event counts from parquet metadata (zero data loading), pre-computes the
+        train/test split, then processes each file individually — loading, writing
+        to h5, and immediately freeing the data before moving to the next file.
+
+        Shuffle is applied per-file (and file order is randomised when shuffle=True),
+        which is a good approximation of a global shuffle without the memory cost.
+        '''
+        # Count events from parquet metadata without loading any column data.
+        file_counts = []
+        remaining = self.entrystop
+        for f in self.input_files:
+            n = pq.read_metadata(f).num_rows
+            if remaining is not None:
+                n = min(n, remaining)
+                remaining -= n
+            file_counts.append(n)
+            if remaining is not None and remaining <= 0:
+                break
+
+        files = self.input_files[:len(file_counts)]
+
+        if self.shuffle:
+            order = np.random.permutation(len(files))
+            files = [files[i] for i in order]
+            file_counts = [file_counts[i] for i in order]
+
+        total = sum(file_counts)
+        n_train = int((1 - self.test_size) * total)
+        n_test = total - n_train
+
+        print(f"Total events: {total}, train: {n_train}, test: {n_test}")
+
+        train_path = output_file.replace(".h5", f"_train_{n_train}.h5")
+        test_path = output_file.replace(".h5", f"_test_{n_test}.h5")
+        self.check_output(train_path)
+        self.check_output(test_path)
+
+        print(f"Creating output files:")
+        print(f"    - {train_path}")
+        print(f"    - {test_path}")
+
+        with h5py.File(train_path, "w") as h5_train, \
+             h5py.File(test_path, "w") as h5_test:
+
+            for h5 in [h5_train, h5_test]:
+                self.file = h5
+                self.create_groups()
+
+            train_budget = n_train
+
+            for file_path, max_events in zip(files, file_counts):
+                df = self._process_file(file_path, max_events)
+
+                if self.shuffle:
+                    df = df[np.random.permutation(len(df))]
+
+                n_file_train = min(train_budget, len(df))
+                n_file_test = len(df) - n_file_train
+                train_budget -= n_file_train
+
+                if n_file_train > 0:
+                    self._append_chunk(h5_train, df[:n_file_train])
+                if n_file_test > 0:
+                    self._append_chunk(h5_test, df[n_file_train:])
+
+                del df
+                gc.collect()
+
+            for h5 in [h5_train, h5_test]:
+                print(h5)
+                self.file = h5
+                self.print()
+
+    def _append_chunk(self, h5_file, df):
+        '''Append one chunk of events to h5, creating resizable datasets on first write.'''
+        n = len(df)
+
+        def append(name, data, dtype=None):
+            arr = np.asarray(data, dtype=dtype)
+            if name in h5_file:
+                ds = h5_file[name]
+                old = ds.shape[0]
+                ds.resize(old + n, axis=0)
+                ds[old:old + n] = arr
+            else:
+                maxshape = (None,) + arr.shape[1:]
+                h5_file.create_dataset(name, data=arr, maxshape=maxshape, chunks=True)
+
+        # Targets
+        if not self.has_data:
+            jets = df[self.collection["Jet"]]
+            indices = ak.local_index(jets)
+            has_prov = "prov" in jets.fields
+
+            for target in self.targets:
+                if target == "h":
+                    if has_prov:
+                        mask = jets.prov == 1
+                        idx = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
+                        append(f"TARGETS/h/b1", ak.to_numpy(idx[:, 0]), np.int64)
+                        append(f"TARGETS/h/b2", ak.to_numpy(idx[:, 1]), np.int64)
+                    else:
+                        append(f"TARGETS/h/b1", -np.ones(n, dtype=np.int64))
+                        append(f"TARGETS/h/b2", -np.ones(n, dtype=np.int64))
+                elif target == "t1":
+                    if has_prov:
+                        idx_q = ak.fill_none(ak.pad_none(indices[jets.prov == 5], 2), -1)
+                        idx_b = ak.fill_none(ak.pad_none(indices[jets.prov == 2], 1), -1)[:, 0]
+                        append(f"TARGETS/t1/q1", ak.to_numpy(idx_q[:, 0]), np.int64)
+                        append(f"TARGETS/t1/q2", ak.to_numpy(idx_q[:, 1]), np.int64)
+                        append(f"TARGETS/t1/b",  ak.to_numpy(idx_b), np.int64)
+                    else:
+                        append(f"TARGETS/t1/q1", -np.ones(n, dtype=np.int64))
+                        append(f"TARGETS/t1/q2", -np.ones(n, dtype=np.int64))
+                        append(f"TARGETS/t1/b",  -np.ones(n, dtype=np.int64))
+                elif target == "t2":
+                    if has_prov:
+                        idx_q = ak.fill_none(ak.pad_none(indices[jets.prov == 6], 2), -1)
+                        idx_b = ak.fill_none(ak.pad_none(indices[jets.prov == 3], 1), -1)[:, 0]
+                        append(f"TARGETS/t2/q1", ak.to_numpy(idx_q[:, 0]), np.int64)
+                        append(f"TARGETS/t2/q2", ak.to_numpy(idx_q[:, 1]), np.int64)
+                        append(f"TARGETS/t2/b",  ak.to_numpy(idx_b), np.int64)
+                    else:
+                        append(f"TARGETS/t2/q1", -np.ones(n, dtype=np.int64))
+                        append(f"TARGETS/t2/q2", -np.ones(n, dtype=np.int64))
+                        append(f"TARGETS/t2/b",  -np.ones(n, dtype=np.int64))
+                else:
+                    raise NotImplementedError
+
+        # Classifications
+        for group, targets in self.classification_targets.items():
+            for target in targets:
+                if group == SpecialKey.Event.value:
+                    append(f"CLASSIFICATIONS/{group}/{target}", ak.to_numpy(df[target]), np.int64)
+                else:
+                    raise NotImplementedError
+
+        # Inputs
+        features = self.get_object_features(df)
+        for obj, feats in features.items():
+            for feat, val in feats.items():
+                dtype = bool if feat == "MASK" else np.float32
+                append(f"INPUTS/{obj}/{feat}", val, dtype)
+
+        # Weights
+        append("WEIGHTS/weight", ak.to_numpy(df.event.weight), np.float32)

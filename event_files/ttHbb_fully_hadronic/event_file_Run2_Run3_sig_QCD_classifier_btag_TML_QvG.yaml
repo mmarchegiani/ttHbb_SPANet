@@ -13,7 +13,6 @@ INPUTS:
         Met:
             pt: log_normalize
             phi: normalize
-            m: normalize
 
         Event:
             ht: log_normalize

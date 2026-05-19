@@ -11,16 +11,22 @@ if __name__ == '__main__':
     parser.add_argument('--no_shuffle', action='store_true', help='If set, do not shuffle the dataset')
     parser.add_argument('--reweigh', action='store_true', help='If set, scale event weights by a factor as specified in the configuration file')
     parser.add_argument('--entrystop', type=int, default=None, required=False, help='Number of events to process')
+    parser.add_argument('--batch_size', type=int, default=None, required=False,
+                        help='Target number of events per batch when reading parquet (rounded to a whole number of row groups). Default: one row group per batch.')
+    parser.add_argument('--no_shuffle_output', action='store_true',
+                        help='Skip the final global shuffle of the output h5 files (saves RAM at the cost of leaving the data sorted by input file).')
 
     args = parser.parse_args()
 
     dataset = SPANetDataset(
         args.input,
         args.cfg,
-        (not args.no_shuffle),
-        args.reweigh,
-        args.entrystop,
-        False,
-        args.fully_matched
+        shuffle=(not args.no_shuffle),
+        reweigh=args.reweigh,
+        entrystop=args.entrystop,
+        has_data=False,
+        fully_matched=args.fully_matched,
+        batch_size=args.batch_size,
+        shuffle_output=(not args.no_shuffle_output),
     )
     dataset.save(args.output)

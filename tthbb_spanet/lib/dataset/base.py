@@ -15,6 +15,7 @@ except Exception:
 import numpy as np
 import awkward as ak
 import h5py
+import pyarrow.parquet as pq
 
 import omegaconf
 from omegaconf import OmegaConf
@@ -111,14 +112,14 @@ class Dataset:
                 df["event"] = ak.with_field(df.event, factor * df.event.weight, "weight")
         return df
 
-    def _process_file(self, input_file, max_events=None):
-        '''Load and process a single parquet file, applying labels and weights.'''
+    def _validate_input_file(self, input_file):
         if not os.path.exists(input_file):
             raise ValueError(f"Input file {input_file} does not exist.")
         if not input_file.endswith(".parquet"):
             raise ValueError(f"Input file {input_file} should have the `.parquet` extension.")
-        print("Reading file: ", input_file)
-        df = ak.from_parquet(input_file)
+
+    def _apply_df_processing(self, df, input_file):
+        '''Apply labels, weights and metadata to a (possibly partial) awkward array.'''
         if self.has_data and "event" not in df.fields:
             df["event"] = ak.zip({"weight": np.ones(len(df), dtype=np.float64)})
         if self.reweigh:
@@ -128,9 +129,54 @@ class Dataset:
             df["metadata"] = ak.zip({"year": len(df)*[self.get_year(input_file)]})
             year = df.metadata.year
             df["metadata"] = ak.with_field(df.metadata, year[:,0], "year")
+        return df
+
+    def _process_file(self, input_file, max_events=None):
+        '''Load and process a single parquet file, applying labels and weights.'''
+        self._validate_input_file(input_file)
+        print("Reading file: ", input_file)
+        df = ak.from_parquet(input_file)
+        df = self._apply_df_processing(df, input_file)
         if max_events is not None and len(df) > max_events:
             df = df[:max_events]
         return df
+
+    def _iter_file_batches(self, input_file, max_events=None, batch_size=None):
+        '''Yield processed batches of a parquet file one row-group group at a time.
+
+        If batch_size is None, one row group is read per batch. Otherwise, enough
+        consecutive row groups are concatenated to approximate batch_size events
+        (using the file's average row-group size).
+        '''
+        self._validate_input_file(input_file)
+
+        pf = pq.ParquetFile(input_file)
+        num_rg = pf.num_row_groups
+        total_rows = pf.metadata.num_rows
+
+        if num_rg == 0:
+            return
+
+        if batch_size is None:
+            rg_per_batch = 1
+        else:
+            avg_rg_rows = total_rows / num_rg
+            rg_per_batch = max(1, int(round(batch_size / avg_rg_rows)))
+
+        print(f"Reading file: {input_file} "
+              f"({num_rg} row groups, {total_rows} events, {rg_per_batch} row-group(s)/batch)")
+
+        yielded = 0
+        for start in range(0, num_rg, rg_per_batch):
+            if max_events is not None and yielded >= max_events:
+                break
+            end = min(start + rg_per_batch, num_rg)
+            df = ak.from_parquet(input_file, row_groups=list(range(start, end)))
+            df = self._apply_df_processing(df, input_file)
+            if max_events is not None and yielded + len(df) > max_events:
+                df = df[:max_events - yielded]
+            yielded += len(df)
+            yield df
 
     def load_input(self):
         '''Load and concatenate all input parquet files into memory.'''

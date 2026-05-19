@@ -24,13 +24,16 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class SPANetDataset(Dataset):
-    def __init__(self, input_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False, fully_matched=False, enable_streaming=True):
+    def __init__(self, input_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False,
+                 fully_matched=False, enable_streaming=True, batch_size=None, shuffle_output=True):
         # Streaming mode processes one file at a time and never loads all data into RAM.
         # It requires no pre-loaded df, so use lazy=True only when streaming is active
         # and fully_matched is off (fully_matched needs all data in memory to apply its filter).
         self.enable_streaming = enable_streaming
         self.fully_matched = fully_matched
-        lazy = enable_streaming
+        self.batch_size = batch_size
+        self.shuffle_output = shuffle_output
+        lazy = enable_streaming and not fully_matched
         super().__init__(input_file, cfg, shuffle=shuffle, reweigh=reweigh, entrystop=entrystop, has_data=has_data, lazy=lazy)
         # base.__init__ already calls load_input() when lazy=False, so self.df is set.
         # fully_matched=True forces lazy=False above, so the data is available here.
@@ -288,15 +291,16 @@ class SPANetDataset(Dataset):
             self.file.close()
 
     def _save_streaming(self, output_file):
-        '''Memory-efficient save: processes one parquet file at a time.
+        '''Memory-efficient save using batched parquet reads and per-file train/test split.
 
-        Instead of loading all files into RAM and then writing, this method reads
-        event counts from parquet metadata (zero data loading), pre-computes the
-        train/test split, then processes each file individually — loading, writing
-        to h5, and immediately freeing the data before moving to the next file.
+        For each input parquet file (each typically corresponds to a different physical
+        process), events are streamed in row-group batches and split into train/test
+        according to ``test_size``. This guarantees every process is proportionally
+        represented in both splits regardless of file order.
 
-        Shuffle is applied per-file (and file order is randomised when shuffle=True),
-        which is a good approximation of a global shuffle without the memory cost.
+        If ``shuffle`` and ``shuffle_output`` are both True, the resulting h5 files are
+        globally shuffled at the end (one dataset at a time, peak RAM ≈ size of the
+        largest dataset).
         '''
         # Count events from parquet metadata without loading any column data.
         file_counts = []
@@ -312,14 +316,12 @@ class SPANetDataset(Dataset):
 
         files = self.input_files[:len(file_counts)]
 
-        if self.shuffle:
-            order = np.random.permutation(len(files))
-            files = [files[i] for i in order]
-            file_counts = [file_counts[i] for i in order]
-
-        total = sum(file_counts)
-        n_train = int((1 - self.test_size) * total)
-        n_test = total - n_train
+        # Per-file train budget: each file contributes the same fraction to train,
+        # so every physical process is proportionally split between train and test.
+        file_train_budgets = [int((1 - self.test_size) * n) for n in file_counts]
+        n_train = sum(file_train_budgets)
+        n_test = sum(file_counts) - n_train
+        total = n_train + n_test
 
         print(f"Total events: {total}, train: {n_train}, test: {n_test}")
 
@@ -339,30 +341,60 @@ class SPANetDataset(Dataset):
                 self.file = h5
                 self.create_groups()
 
-            train_budget = n_train
+            for file_path, max_events, train_budget in zip(files, file_counts, file_train_budgets):
+                remaining_train = train_budget
+                for batch in self._iter_file_batches(file_path, max_events=max_events, batch_size=self.batch_size):
+                    n_batch = len(batch)
+                    n_batch_train = min(remaining_train, n_batch)
+                    n_batch_test = n_batch - n_batch_train
+                    remaining_train -= n_batch_train
 
-            for file_path, max_events in zip(files, file_counts):
-                df = self._process_file(file_path, max_events)
+                    if n_batch_train > 0:
+                        self._append_chunk(h5_train, batch[:n_batch_train])
+                    if n_batch_test > 0:
+                        self._append_chunk(h5_test, batch[n_batch_train:])
 
-                if self.shuffle:
-                    df = df[np.random.permutation(len(df))]
-
-                n_file_train = min(train_budget, len(df))
-                n_file_test = len(df) - n_file_train
-                train_budget -= n_file_train
-
-                if n_file_train > 0:
-                    self._append_chunk(h5_train, df[:n_file_train])
-                if n_file_test > 0:
-                    self._append_chunk(h5_test, df[n_file_train:])
-
-                del df
-                gc.collect()
+                    del batch
+                    gc.collect()
 
             for h5 in [h5_train, h5_test]:
                 print(h5)
                 self.file = h5
                 self.print()
+
+        # Global shuffle of each h5 file (one dataset at a time).
+        if self.shuffle and self.shuffle_output:
+            print("Shuffling output h5 files...")
+            self._shuffle_h5(train_path)
+            self._shuffle_h5(test_path)
+
+    def _shuffle_h5(self, h5_path):
+        '''Globally shuffle every dataset in an h5 file in place using a shared permutation.
+
+        Loads one dataset at a time. Peak extra RAM ≈ 2 × size of the largest dataset
+        (the loaded copy plus the fancy-indexed permuted copy).
+        '''
+        with h5py.File(h5_path, "r+") as f:
+            dataset_names = []
+            f.visititems(lambda name, obj: dataset_names.append(name) if isinstance(obj, h5py.Dataset) else None)
+
+            if not dataset_names:
+                return
+
+            n = f[dataset_names[0]].shape[0]
+            for name in dataset_names:
+                if f[name].shape[0] != n:
+                    raise RuntimeError(f"Dataset {name} has size {f[name].shape[0]}, expected {n}.")
+
+            perm = np.random.permutation(n)
+            print(f"  {h5_path}: shuffling {len(dataset_names)} datasets ({n} events)")
+
+            for name in dataset_names:
+                ds = f[name]
+                data = ds[:]
+                ds[:] = data[perm]
+                del data
+                gc.collect()
 
     def _append_chunk(self, h5_file, df):
         '''Append one chunk of events to h5, creating resizable datasets on first write.'''

@@ -1,7 +1,8 @@
 #description: "Features for classification in ttHbb fully hadronic channel"
 input:
   # MASK required by SPANet JetReconstructionDataset (see INPUTS/Jet/MASK); derived from pt in parquet_to_h5
-  Jet: [MASK, pt, eta, phi, btag, btag_L, btag_M, btag_T, btag_XT, btag_XXT, btag_CvL, btag_CvB, btag_QvG]
+  #Jet: [MASK, pt, eta, phi, btag, btag_L, btag_M, btag_T, btag_XT, btag_XXT, btag_CvL, btag_CvB, btag_QvG]
+  Jet: [MASK, pt, eta, phi, btag_L, btag_M, btag_T]
   Met: [pt, phi]
   Event: [ht]
 

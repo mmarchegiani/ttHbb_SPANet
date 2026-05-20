@@ -24,11 +24,12 @@ class SpecialKey(str, Enum):
     Weights = "WEIGHTS"
 
 class SPANetDataset(Dataset):
-    def __init__(self, input_file, cfg, shuffle=True, reweigh=False, entrystop=None, has_data=False,
+    def __init__(self, input_file, cfg, shuffle=True, reweigh=False, entrystop=None, njet_max=16, has_data=False,
                  fully_matched=False, enable_streaming=True, batch_size=None, shuffle_output=True):
         # Streaming mode processes one file at a time and never loads all data into RAM.
         # It requires no pre-loaded df, so use lazy=True only when streaming is active
         # and fully_matched is off (fully_matched needs all data in memory to apply its filter).
+        self.njet_max = njet_max
         self.enable_streaming = enable_streaming
         self.fully_matched = fully_matched
         self.batch_size = batch_size
@@ -94,6 +95,11 @@ class SPANetDataset(Dataset):
         for group in self.classification_targets:
             self.file.create_group(f"{SpecialKey.Classifications.value}/{group}")
 
+    def _cap_jet_index(self, arr):
+        """Replace jet indices >= njet_max with -1 (jet was truncated, treat as unmatched)."""
+        arr = np.asarray(arr, dtype=np.int64)
+        return np.where(arr >= self.njet_max, -1, arr)
+
     def create_targets(self, df):
         jets = df[self.collection["Jet"]]
         indices = ak.local_index(jets)
@@ -126,34 +132,34 @@ class SPANetDataset(Dataset):
                 # The None values are filled with -1 (a nan value).
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
-                index_b1 = indices_prov[:,0]
-                index_b2 = indices_prov[:,1]
+                index_b1 = self._cap_jet_index(indices_prov[:,0])
+                index_b2 = self._cap_jet_index(indices_prov[:,1])
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b1", np.shape(index_b1), dtype='int64', data=index_b1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/h/b2", np.shape(index_b2), dtype='int64', data=index_b2)
 
             elif target == "t1":
-                mask = jets.prov == 5 # decay quarks from W (from top)  
+                mask = jets.prov == 5 # decay quarks from W (from top)
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
 
-                index_q1 = indices_prov[:,0]
-                index_q2 = indices_prov[:,1]
+                index_q1 = self._cap_jet_index(indices_prov[:,0])
+                index_q2 = self._cap_jet_index(indices_prov[:,1])
 
-                mask = jets.prov == 2 # bquarks from top 
-                index_b_top= ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                mask = jets.prov == 2 # bquarks from top
+                index_b_top = self._cap_jet_index(ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0])
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q1", np.shape(index_q1), dtype='int64', data=index_q1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/q2", np.shape(index_q2), dtype='int64', data=index_q2)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t1/b", np.shape(index_b_top), dtype='int64', data=index_b_top)
 
             elif target == "t2":
-                mask = jets.prov == 6 # non-b decay quarks from  W (from antitop) 
+                mask = jets.prov == 6 # non-b decay quarks from  W (from antitop)
                 indices_prov = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
-                index_q1 = indices_prov[:,0]
-                index_q2 = indices_prov[:,1]
-                
-                mask = jets.prov == 3 # bquarks from antitop 
-                index_b_antitop = ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0]
+                index_q1 = self._cap_jet_index(indices_prov[:,0])
+                index_q2 = self._cap_jet_index(indices_prov[:,1])
+
+                mask = jets.prov == 3 # bquarks from antitop
+                index_b_antitop = self._cap_jet_index(ak.fill_none(ak.pad_none(indices[mask], 1), -1)[:,0])
 
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q1", np.shape(index_q1), dtype='int64', data=index_q1)
                 self.file.create_dataset(f"{SpecialKey.Targets.value}/t2/q2", np.shape(index_q2), dtype='int64', data=index_q2)
@@ -206,6 +212,8 @@ class SPANetDataset(Dataset):
                         features_dict["ht"] = ak.sum(df["JetGood"]["pt"], axis=1)
                     else:
                         raise NotImplementedError
+            elif obj == "Jet" and "MASK" not in features:
+                raise ValueError("For the Jet collection, the MASK feature must be included to handle variable-length jet arrays.")
             else:
                 collection = self.collection[obj]
 
@@ -227,7 +235,7 @@ class SPANetDataset(Dataset):
                         if objects.ndim == 1:
                             features_dict[feat] = ak.to_numpy(values)
                         elif objects.ndim == 2:
-                            features_dict[feat] = ak.to_numpy(ak.fill_none(ak.pad_none(values, 16, clip=True), 0))
+                            features_dict[feat] = ak.to_numpy(ak.fill_none(ak.pad_none(values, self.njet_max, clip=True), 0))
                         else:
                             raise NotImplementedError
 
@@ -422,8 +430,8 @@ class SPANetDataset(Dataset):
                     if has_prov:
                         mask = jets.prov == 1
                         idx = ak.fill_none(ak.pad_none(indices[mask], 2), -1)
-                        append(f"TARGETS/h/b1", ak.to_numpy(idx[:, 0]), np.int64)
-                        append(f"TARGETS/h/b2", ak.to_numpy(idx[:, 1]), np.int64)
+                        append(f"TARGETS/h/b1", self._cap_jet_index(idx[:, 0]), np.int64)
+                        append(f"TARGETS/h/b2", self._cap_jet_index(idx[:, 1]), np.int64)
                     else:
                         append(f"TARGETS/h/b1", -np.ones(n, dtype=np.int64))
                         append(f"TARGETS/h/b2", -np.ones(n, dtype=np.int64))
@@ -431,9 +439,9 @@ class SPANetDataset(Dataset):
                     if has_prov:
                         idx_q = ak.fill_none(ak.pad_none(indices[jets.prov == 5], 2), -1)
                         idx_b = ak.fill_none(ak.pad_none(indices[jets.prov == 2], 1), -1)[:, 0]
-                        append(f"TARGETS/t1/q1", ak.to_numpy(idx_q[:, 0]), np.int64)
-                        append(f"TARGETS/t1/q2", ak.to_numpy(idx_q[:, 1]), np.int64)
-                        append(f"TARGETS/t1/b",  ak.to_numpy(idx_b), np.int64)
+                        append(f"TARGETS/t1/q1", self._cap_jet_index(idx_q[:, 0]), np.int64)
+                        append(f"TARGETS/t1/q2", self._cap_jet_index(idx_q[:, 1]), np.int64)
+                        append(f"TARGETS/t1/b",  self._cap_jet_index(idx_b), np.int64)
                     else:
                         append(f"TARGETS/t1/q1", -np.ones(n, dtype=np.int64))
                         append(f"TARGETS/t1/q2", -np.ones(n, dtype=np.int64))
@@ -442,9 +450,9 @@ class SPANetDataset(Dataset):
                     if has_prov:
                         idx_q = ak.fill_none(ak.pad_none(indices[jets.prov == 6], 2), -1)
                         idx_b = ak.fill_none(ak.pad_none(indices[jets.prov == 3], 1), -1)[:, 0]
-                        append(f"TARGETS/t2/q1", ak.to_numpy(idx_q[:, 0]), np.int64)
-                        append(f"TARGETS/t2/q2", ak.to_numpy(idx_q[:, 1]), np.int64)
-                        append(f"TARGETS/t2/b",  ak.to_numpy(idx_b), np.int64)
+                        append(f"TARGETS/t2/q1", self._cap_jet_index(idx_q[:, 0]), np.int64)
+                        append(f"TARGETS/t2/q2", self._cap_jet_index(idx_q[:, 1]), np.int64)
+                        append(f"TARGETS/t2/b",  self._cap_jet_index(idx_b), np.int64)
                     else:
                         append(f"TARGETS/t2/q1", -np.ones(n, dtype=np.int64))
                         append(f"TARGETS/t2/q2", -np.ones(n, dtype=np.int64))

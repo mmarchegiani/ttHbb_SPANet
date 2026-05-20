@@ -1,5 +1,5 @@
 #!/bin/bash
-SPANET_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/dev/SPANet
+SPANET_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/SPANet
 TTHBB_SPANET_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet
 NUM_GPU=1
 
@@ -16,7 +16,7 @@ cd $TTHBB_SPANET_DIR
 pip install -e .
 
 # Install MDMM loss package
-python -m pip install 'mdmm @ git+https://github.com/the-moliver/mdmm@master'
+#python -m pip install 'mdmm @ git+https://github.com/the-moliver/mdmm@master'
 
 # Launch training
 if [ $# -eq 2 ]; then

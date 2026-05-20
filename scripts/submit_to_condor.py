@@ -1,5 +1,6 @@
 import os
 import argparse
+import subprocess
 
 import htcondor
 
@@ -16,8 +17,8 @@ parser.add_argument("-cf", "--checkpoint", type=str, default=None,
                          "Fully restores model weights and optimizer state.")
 parser.add_argument('--dry', action="store_true")
 parser.add_argument('--interactive', action="store_true")
-parser.add_argument('--ngpu', type=int, default=1)
-parser.add_argument('--ncpu', type=int, default=3)
+parser.add_argument('--ngpu', type=int, default=None)
+parser.add_argument('--ncpu', type=int, default=None)
 parser.add_argument("--good-gpus", action="store_true")
 parser.add_argument("--args", nargs="+", type=str, help="additional args")
 args = parser.parse_args()
@@ -25,8 +26,14 @@ args = parser.parse_args()
 interactive = args.interactive
 
 col = htcondor.Collector()
-credd = htcondor.Credd()
-credd.add_user_cred(htcondor.CredTypes.Kerberos, None)
+print("Adding Kerberos credentials for Condor submission...")
+krb5ccname = os.environ.get('KRB5CCNAME', f'/tmp/krb5cc_{os.getuid()}')
+if krb5ccname.startswith('FILE:'):
+    krb5ccname = krb5ccname[5:]
+subprocess.run(
+    ['condor_store_cred', 'add-krb', '-i', krb5ccname],
+    check=True,
+)
 
 cfg = OmegaConf.load(args.cfg)
 basedir = cfg['path']
@@ -34,6 +41,12 @@ model = cfg['model']
 job_flavour = cfg['job_flavour']
 ngpu = cfg['ngpu']
 ncpu = cfg['ncpu']
+if args.ngpu is not None:
+    print(f"Overriding default GPU requirement: {ngpu} -> {args.ngpu}")
+    ngpu = args.ngpu
+if args.ncpu is not None:
+    print(f"Overriding default CPU requirement: {ncpu} -> {args.ncpu}")
+    ncpu = args.ncpu
 
 # Override defaults by command line arguments
 if args.ngpu != parser.get_default("ngpu"):
@@ -64,8 +77,8 @@ if args.checkpoint:
     sub['arguments'] += f" {args.checkpoint}"
 
 # GPU and CPU requirements
-sub['request_cpus'] = f"{args.ncpu}"
-sub['request_gpus'] = f"{args.ngpu}"
+sub['request_cpus'] = f"{ncpu}"
+sub['request_gpus'] = f"{ngpu}"
 
 # Fix for CUDA issues on some nodes
 sub['requirements'] = '!regexp("MIG", TARGET.Gpus_DeviceName)'

@@ -24,9 +24,9 @@
     "normalization": "LayerNorm",
     "masking": "Multiplicative",
     "linear_prelu_activation": 1,
-    "event_info_file": "/home/export/sdurgut/scratch/ttHbb_SPANet/event_files/ttHbb_fully_hadronic/event_file_Run2_Run3_sig_QCD_classifier_btag_TML.yaml",
-    "training_file": "/home/export/sdurgut/scratch/parquet_to_h5_output/classification/with_MASK/merged_with_MASK/merged_train_0324_61840115.h5", 
-    "validation_file": "/home/export/sdurgut/scratch/parquet_to_h5_output/classification/with_MASK/merged_with_MASK/merged_test_0324_15460031.h5",
+    "event_info_file": "/afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet/event_files/ttHbb_fully_hadronic/event_file_Run2_Run3_sig_QCD_classifier_btag_TML.yaml",
+    "training_file": "/eos/cms/store/group/phys_higgs/ttHbb/ntuples/fullyhadronic_ttH_export/h5/output_run3_train_93145114.h5", 
+    "validation_file": "/eos/cms/store/group/phys_higgs/ttHbb/ntuples/fullyhadronic_ttH_export/h5/output_run3_test_23286366.h5",
     "testing_file": "",
     "normalize_features": 1,
     "limit_to_num_jets": 0,
@@ -57,7 +57,7 @@
     "l2_penalty": 0.0002,
     "gradient_clip": 0.0,
     "dropout": 0.1,
-    "epochs": 100,
+    "epochs": 500,
     "checkpoint_metric": "validation_loss/total_loss",
     "checkpoint_save_top_k": 25,
     "checkpoint_mode": "min",
@@ -72,5 +72,5 @@
     "verbose_output": true,
     "usable_gpus": "",
     "trial_time": "",
-    "trial_output_dir": "/home/export/sdurgut/scratch/ttHbb_SPANet/spanet_output/classifier/Run2_Run3_sig_QCD_btagH"
+    "trial_output_dir": "/afs/cern.ch/work/m/mmarcheg/ttHbb/ttHbb_SPANet/jobs_output/multiclassifier_btag_TML"
 }

@@ -136,6 +136,10 @@ class Dataset:
 
     def _apply_df_processing(self, df, input_file):
         '''Apply labels, weights and metadata to a (possibly partial) awkward array.'''
+        if self.njet_min is not None:
+            if self.jet_collection_name is None:
+                raise ValueError("njet_min requires 'collection.Jet' to be defined in the config.")
+            df = df[ak.num(df[self.jet_collection_name]) >= self.njet_min]
         if self.has_data and "event" not in df.fields:
             df["event"] = ak.zip({"weight": np.ones(len(df), dtype=np.float64)})
         if self.reweigh:
@@ -226,6 +230,8 @@ class Dataset:
         self.one_hot_encoding = False
         self.test_size = 0.2
         self.max_frac_events = None
+        self.njet_min = None
+        self.jet_collection_name = None
 
     def load_config(self):
         '''Load the config file with OmegaConf and read the input features.'''
@@ -249,6 +255,11 @@ class Dataset:
             self.weights_scale = self.cfg["weights_scale"]
         self.test_size = self.cfg.get("test_size", 0.2)
         self.max_frac_events = OmegaConf.to_container(self.cfg["max_frac_events"]) if "max_frac_events" in self.cfg else None
+        self.njet_min = self.cfg.get("njet_min", None)
+        if self.njet_min is not None and "collection" in self.cfg and "Jet" in self.cfg["collection"]:
+            self.jet_collection_name = self.cfg["collection"]["Jet"]
+        else:
+            self.jet_collection_name = None
 
     def store_mask(self, name, mask):
         '''Store the mask in the masks dictionary.'''

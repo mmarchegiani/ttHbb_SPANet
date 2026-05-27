@@ -72,6 +72,8 @@ classification:
   EVENT:
     - signal
 
+njet_min: 7
+
 frac_train: 0.8
 
 # Optional: cap the fraction of events read from each dataset (keyed by mapping_sample name).

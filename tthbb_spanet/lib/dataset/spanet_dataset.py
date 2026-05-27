@@ -314,7 +314,11 @@ class SPANetDataset(Dataset):
         file_counts = []
         remaining = self.entrystop
         for f in self.input_files:
-            n = pq.read_metadata(f).num_rows
+            total_n = pq.read_metadata(f).num_rows
+            n = total_n
+            file_max = self._get_max_events_for_file(f, total_events=total_n)
+            if file_max is not None:
+                n = min(n, file_max)
             if remaining is not None:
                 n = min(n, remaining)
                 remaining -= n

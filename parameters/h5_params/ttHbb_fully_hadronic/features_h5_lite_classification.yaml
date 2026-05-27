@@ -12,6 +12,15 @@ collection:
 
 particles: [t1, t2, h]
 
+max_frac_events:
+  QCD: 0.2
+  TTto4Q_ttLF: 0.15
+  TTtoLNu2Q_ttLF: 0.15
+  TTto4Q_ttC: 0.6
+  TTtoLNu2Q_ttC: 0.6
+  Wto2Q: 0.2
+  Zto2Q: 0.2
+
 mapping_sample:
   TTH_Hto2B: tthbb
   QCD: qcd

@@ -112,6 +112,22 @@ class Dataset:
                 df["event"] = ak.with_field(df.event, factor * df.event.weight, "weight")
         return df
 
+    def _get_max_events_for_file(self, input_file, total_events=None):
+        '''Return the per-sample event cap derived from max_frac_events, or None if not set.
+
+        total_events may be provided to avoid re-reading parquet metadata (useful when
+        the caller already has it, e.g. the streaming path).
+        '''
+        if not self.max_frac_events:
+            return None
+        sample_name = self.get_sample_name(input_file)
+        frac = self.max_frac_events.get(sample_name, None)
+        if frac is None:
+            return None
+        if total_events is None:
+            total_events = pq.read_metadata(input_file).num_rows
+        return int(frac * total_events)
+
     def _validate_input_file(self, input_file):
         if not os.path.exists(input_file):
             raise ValueError(f"Input file {input_file} does not exist.")
@@ -186,7 +202,10 @@ class Dataset:
         for input_file in self.input_files:
             if remaining_entries is not None and remaining_entries <= 0:
                 break
-            df = self._process_file(input_file, remaining_entries)
+            file_max = self._get_max_events_for_file(input_file)
+            if remaining_entries is not None:
+                file_max = min(file_max, remaining_entries) if file_max is not None else remaining_entries
+            df = self._process_file(input_file, file_max)
             if remaining_entries is not None:
                 remaining_entries -= len(df)
             dfs.append(df)
@@ -206,6 +225,7 @@ class Dataset:
         self.mapping_sample = None
         self.one_hot_encoding = False
         self.test_size = 0.2
+        self.max_frac_events = None
 
     def load_config(self):
         '''Load the config file with OmegaConf and read the input features.'''
@@ -228,6 +248,7 @@ class Dataset:
         if "weights_scale" in self.cfg:
             self.weights_scale = self.cfg["weights_scale"]
         self.test_size = self.cfg.get("test_size", 0.2)
+        self.max_frac_events = OmegaConf.to_container(self.cfg["max_frac_events"]) if "max_frac_events" in self.cfg else None
 
     def store_mask(self, name, mask):
         '''Store the mask in the masks dictionary.'''

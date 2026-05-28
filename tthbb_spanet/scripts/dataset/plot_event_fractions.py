@@ -64,8 +64,8 @@ def generate_report(h5_file, cfg_file, report_dir=None):
             for enc_val, class_name in sorted(class_map.items()):
                 n = int(np.sum(signal == enc_val))
                 if n <= 0:
-                    breakpoint()
-                    raise ValueError(f"There are no events with encoding {enc_val} for label {label_key} in {h5_path.name}, but it is defined in mapping_encoding.")
+                    print(f"  Warning: No events with encoding {enc_val} for label {label_key} in {h5_path.name}, but it is defined in mapping_encoding.")
+                    continue
                 counts[class_name] = counts.get(class_name, 0) + n
 
             for class_name, n in counts.items():

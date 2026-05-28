@@ -328,17 +328,14 @@ class SPANetDataset(Dataset):
 
         files = self.input_files[:len(file_counts)]
 
-        # Per-file train budget: each file contributes the same fraction to train,
-        # so every physical process is proportionally split between train and test.
-        file_train_budgets = [int((1 - self.test_size) * n) for n in file_counts]
-        n_train = sum(file_train_budgets)
-        n_test = sum(file_counts) - n_train
-        total = n_train + n_test
+        # Estimate train/test split sizes for the filename (pre-filter; will be corrected on rename).
+        n_train_est = int(sum((1 - self.test_size) * n for n in file_counts))
+        n_test_est  = sum(file_counts) - n_train_est
 
-        print(f"Total events: {total}, train: {n_train}, test: {n_test}")
+        print(f"Estimated total events (pre-filter): {sum(file_counts)}, train: {n_train_est}, test: {n_test_est}")
 
-        train_path = output_file.replace(".h5", f"_train_{n_train}.h5")
-        test_path = output_file.replace(".h5", f"_test_{n_test}.h5")
+        train_path = output_file.replace(".h5", f"_train_{n_train_est}.h5")
+        test_path = output_file.replace(".h5", f"_test_{n_test_est}.h5")
         self.check_output(train_path)
         self.check_output(test_path)
 
@@ -353,13 +350,18 @@ class SPANetDataset(Dataset):
                 self.file = h5
                 self.create_groups()
 
-            for file_path, max_events, train_budget in zip(files, file_counts, file_train_budgets):
-                remaining_train = train_budget
+            for file_path, max_events in zip(files, file_counts):
+                # Track filtered counts dynamically so the train/test fraction is based on
+                # actual post-filter events, not the pre-filter parquet metadata counts.
+                file_seen = 0
+                file_train_so_far = 0
                 for batch in self._iter_file_batches(file_path, max_events=max_events, batch_size=self.batch_size):
                     n_batch = len(batch)
-                    n_batch_train = min(remaining_train, n_batch)
+                    file_seen += n_batch
+                    target_train = int((1 - self.test_size) * file_seen)
+                    n_batch_train = max(0, min(n_batch, target_train - file_train_so_far))
                     n_batch_test = n_batch - n_batch_train
-                    remaining_train -= n_batch_train
+                    file_train_so_far += n_batch_train
 
                     if n_batch_train > 0:
                         self._append_chunk(h5_train, batch[:n_batch_train])
@@ -383,7 +385,7 @@ class SPANetDataset(Dataset):
         # Rename files to reflect the actual post-filter event counts (e.g. after njet_min cut).
         actual_n_train = self._get_h5_event_count(train_path)
         actual_n_test  = self._get_h5_event_count(test_path)
-        if actual_n_train != n_train or actual_n_test != n_test:
+        if actual_n_train != n_train_est or actual_n_test != n_test_est:
             new_train_path = output_file.replace(".h5", f"_train_{actual_n_train}.h5")
             new_test_path  = output_file.replace(".h5", f"_test_{actual_n_test}.h5")
             os.rename(train_path, new_train_path)

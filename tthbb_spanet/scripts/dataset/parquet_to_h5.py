@@ -1,6 +1,8 @@
 import argparse
+from pathlib import Path
 
 from tthbb_spanet.lib.dataset.spanet_dataset import SPANetDataset
+from tthbb_spanet.scripts.dataset.plot_event_fractions import generate_report
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert awkward ntuples in coffea files to parquet files.')
@@ -30,3 +32,8 @@ if __name__ == '__main__':
         shuffle_output=(not args.no_shuffle_output),
     )
     dataset.save(args.output)
+
+    if dataset.one_hot_encoding:
+        output_path = Path(args.output)
+        for h5_file in sorted(output_path.parent.glob(f"{output_path.stem}_*.h5")):
+            generate_report(h5_file, args.cfg)

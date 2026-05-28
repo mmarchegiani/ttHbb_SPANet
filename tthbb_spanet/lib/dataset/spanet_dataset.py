@@ -380,6 +380,27 @@ class SPANetDataset(Dataset):
             self._shuffle_h5(train_path)
             self._shuffle_h5(test_path)
 
+        # Rename files to reflect the actual post-filter event counts (e.g. after njet_min cut).
+        actual_n_train = self._get_h5_event_count(train_path)
+        actual_n_test  = self._get_h5_event_count(test_path)
+        if actual_n_train != n_train or actual_n_test != n_test:
+            new_train_path = output_file.replace(".h5", f"_train_{actual_n_train}.h5")
+            new_test_path  = output_file.replace(".h5", f"_test_{actual_n_test}.h5")
+            os.rename(train_path, new_train_path)
+            os.rename(test_path,  new_test_path)
+            print(f"Renamed output files to match actual event counts:")
+            print(f"    - {new_train_path}")
+            print(f"    - {new_test_path}")
+
+    def _get_h5_event_count(self, h5_path):
+        """Return the leading dimension of the first dataset found in an h5 file."""
+        with h5py.File(h5_path, "r") as f:
+            found = []
+            f.visititems(lambda name, obj: found.append(obj.shape[0]) if isinstance(obj, h5py.Dataset) else None)
+        if not found:
+            raise RuntimeError(f"No datasets found in {h5_path}")
+        return found[0]
+
     def _shuffle_h5(self, h5_path):
         '''Globally shuffle every dataset in an h5 file in place using a shared permutation.
 

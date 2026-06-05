@@ -18,8 +18,8 @@ max_frac_events:
   TTtoLNu2Q_ttLF: 0.15
   TTto4Q_ttC: 0.6
   TTtoLNu2Q_ttC: 0.6
-  Wto2Q: 0.2
-  Zto2Q: 0.2
+  Wto2Q: 0.5
+  Zto2Q: 0.5
 
 mapping_sample:
   TTH_Hto2B: tthbb

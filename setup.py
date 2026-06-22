@@ -21,8 +21,13 @@ setup(
         'h5py>=3.9',
         'vector<1.0.0',
         'omegaconf',
+        'numpy',
+        'matplotlib',
+        'mplhep',
         'scikit-learn',
-        'htcondor'
+        'seaborn',
+        'htcondor',
+        'onnxruntime-gpu'
     ],
     classifiers=[
         'Development Status :: 1 - Planning',

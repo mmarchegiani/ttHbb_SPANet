@@ -144,7 +144,14 @@ def make_session(onnx_path, providers=None, intra_op_threads=4, inter_op_threads
     so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     if providers is None:
         providers = resolve_providers()
-    return ort.InferenceSession(onnx_path, sess_options=so, providers=providers)
+    try:
+        return ort.InferenceSession(onnx_path, sess_options=so, providers=providers)
+    except Exception as e:
+        if "CUDAExecutionProvider" in providers:
+            print(f"[warn] CUDAExecutionProvider failed ({e}), retrying with CPUExecutionProvider")
+            return ort.InferenceSession(onnx_path, sess_options=so,
+                                        providers=["CPUExecutionProvider"])
+        raise
 
 
 def run_onnx_inference(

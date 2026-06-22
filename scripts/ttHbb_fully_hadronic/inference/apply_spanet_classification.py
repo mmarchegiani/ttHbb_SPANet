@@ -37,6 +37,7 @@ Examples
 import argparse
 import json
 import os
+import subprocess
 
 import numpy as np
 
@@ -140,9 +141,15 @@ def cmd_submit(args):
     else:
         requirements = '!regexp("MIG", TARGET.Gpus_DeviceName)'
 
-    credd = htcondor.Credd()
-    credd.add_user_cred(htcondor.CredTypes.Kerberos, None)
-    schedd = htcondor.Schedd() if not args.dry else None
+    col = htcondor.Collector()
+    print("Adding Kerberos credentials for Condor submission...")
+    krb5ccname = os.environ.get('KRB5CCNAME', f'/tmp/krb5cc_{os.getuid()}')
+    if krb5ccname.startswith('FILE:'):
+        krb5ccname = krb5ccname[5:]
+    subprocess.run(
+        ['condor_store_cred', 'add-krb', '-i', krb5ccname],
+        check=True,
+    )
 
     for start, stop in slices:
         out_npy = os.path.join(sdir, slice_npy_name(start, stop))
@@ -150,10 +157,14 @@ def cmd_submit(args):
         sub = htcondor.Submit()
         sub["Executable"] = job_sh
         sub["arguments"] = (
-            f"{script} {args.h5} {args.config} {args.onnx} "
+            f"{script} {os.path.abspath(args.h5)} {os.path.abspath(args.config)} "
+            f"{os.path.abspath(args.onnx)} "
             f"{start} {stop} {out_npy} {args.batch_size}"
         )
-        sub["environment"] = f"PROJECT_DIR={project_dir} VENV_ACTIVATE={args.venv or ''}"
+        env_vars = f"PROJECT_DIR={project_dir}"
+        if args.venv:
+            env_vars += f" VENV_ACTIVATE={args.venv}"
+        sub["environment"] = env_vars
         sub["Output"] = os.path.join(log_root, "output", f"{tag}-$(ClusterId).$(ProcId).out")
         sub["Error"] = os.path.join(log_root, "error", f"{tag}-$(ClusterId).$(ProcId).err")
         sub["Log"] = os.path.join(log_root, "log", f"{tag}-$(ClusterId).log")
@@ -168,7 +179,9 @@ def cmd_submit(args):
             print(f"\n--- DRY RUN: {tag} ---")
             print(sub)
             continue
-        result = schedd.submit(sub, count=1)
+        print("Starting Condor scheduler...")
+        client = htcondor.Schedd()
+        result = client.submit(sub, count=1)
         print(f"[submit] {tag}: cluster {result.cluster()} ({result.num_procs()} job)")
 
     if args.dry:
@@ -366,11 +379,11 @@ def build_parser():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
 
-    def add_common(sp, onnx_required=True):
+    def add_common(sp, onnx_required=True, out_folder_required=True):
         sp.add_argument("--h5", required=True, help="Input HDF5 file")
         sp.add_argument("--config", required=True, help="SPANet event.yaml config")
         sp.add_argument("--onnx", required=onnx_required, help="ONNX model file")
-        sp.add_argument("--out-folder", required=True, help="Output folder")
+        sp.add_argument("--out-folder", required=out_folder_required, help="Output folder")
         sp.add_argument("--batch-size", type=int, default=2048)
 
     sp_submit = sub.add_parser("submit", help="Split H5 and submit GPU condor jobs")
@@ -388,7 +401,7 @@ def build_parser():
     sp_submit.set_defaults(func=cmd_submit)
 
     sp_infer = sub.add_parser("infer", help="Run inference on one slice (worker)")
-    add_common(sp_infer)
+    add_common(sp_infer, out_folder_required=False)
     sp_infer.add_argument("--start", type=int, default=0)
     sp_infer.add_argument("--stop", type=int, default=None)
     sp_infer.add_argument("--out-npy", required=True, help="Output .npy for the slice")

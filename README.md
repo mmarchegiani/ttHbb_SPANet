@@ -46,6 +46,14 @@ python -m spanet.train --help
 ```
 
 ## Dataset creation
+### Create Parquet metadata
+After producing the ntuples with PocketCoffea, events are saved by chunks into individual Parquet files. In order to read the full folder instead of individual files, one needs to create the Parquet metadata first.
+This is done by launching the following command:
+```bash
+python python scripts/dataset/create_parquet_metadata.py -i /path/to/ntuples -j 8
+```
+This will create the `_metadata` and `_common_metadata` files in each subfolder of `/path/to/ntuples` recursively.
+
 ### Coffea to Parquet conversion
 In order to create the `.parquet` dataset starting from the ntuples saved in parquet format (chunk-by-chunk), 4 arguments are needed:
 

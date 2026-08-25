@@ -1,6 +1,8 @@
 #!/bin/bash
 
-BASE_DIR="/eos/cms/store/group/phys_higgs/ttHbb/ntuples/fullyhadronic_ttH_export"
+BASE_DIR="/eos/cms/store/group/phys_higgs/ttHbb/ntuples/fullyhadronic_ttH_export-inference"
+#COFFEA_DIR="/eos/user/m/mmarcheg/ttHbb/run3/fullyhadronic/ntuples/multiple_wp_LMT_run3"
+COFFEA_DIR="/eos/user/m/mmarcheg/ttHbb/run3/fullyhadronic/ntuples/multiple_wp_LMT_inference_2024"
 
 for dataset_path in ${BASE_DIR}/*; do
     dataset=$(basename "$dataset_path")
@@ -20,12 +22,13 @@ for dataset_path in ${BASE_DIR}/*; do
         sample_type="sig"
     else
         sample_type="bkg"
+        continue
     fi
 
     if [[ $dataset == *2022* || $dataset == *2023* ]]; then
-        cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_${sample_type}_NanoAODv12.yaml"
+        cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_${sample_type}_inference_NanoAODv12.yaml"
     elif [[ $dataset == *2024* ]]; then
-        cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_${sample_type}_NanoAODv15.yaml"
+        cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_${sample_type}_inference_NanoAODv15.yaml"
     else
         echo "Error: cannot determine era for dataset: $dataset" >&2
         continue
@@ -42,7 +45,7 @@ for dataset_path in ${BASE_DIR}/*; do
     fi
 
     python -m tthbb_spanet.scripts.dataset.coffea_to_parquet \
-        -i /eos/user/m/mmarcheg/ttHbb/run3/fullyhadronic/ntuples/multiple_wp_LMT_run3/output_all.coffea \
+        -i "$COFFEA_DIR/output_all.coffea" \
         --cfg "$cfg" \
         -o "$output_dir" \
         --ntuples "${BASE_DIR}/${dataset}/baseline/nominal/" \
@@ -52,7 +55,8 @@ done
 
 # Loop over ttbar datasets and years
 TTBAR_SAMPLES=(TTBBto4Q TTBBtoLNu2Q_4FS TTto4Q TTtoLNu2Q)
-YEARS=(2022_preEE 2022_postEE 2023_preBPix 2023_postBPix "2024")
+#YEARS=(2022_preEE 2022_postEE 2023_preBPix 2023_postBPix "2024")
+YEARS=("2024")
 
 for sample in "${TTBAR_SAMPLES[@]}"; do
     for year in "${YEARS[@]}"; do
@@ -61,9 +65,9 @@ for sample in "${TTBAR_SAMPLES[@]}"; do
 
         # Choose parameter file based on year
         if [[ $year == 2022* || $year == 2023* ]]; then
-            cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_bkg_NanoAODv12.yaml"
+            cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_bkg_inference_NanoAODv12.yaml"
         elif [[ $year == "2024" ]]; then
-            cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_bkg_NanoAODv15.yaml"
+            cfg="parameters/ttHbb_fully_hadronic/features_tthbb_FH_bkg_inference_NanoAODv15.yaml"
         else
             echo "Error: cannot determine era for dataset: $dataset" >&2
             continue
@@ -82,7 +86,7 @@ for sample in "${TTBAR_SAMPLES[@]}"; do
                 fi
 
                 python -m tthbb_spanet.scripts.dataset.coffea_to_parquet \
-                    -i /eos/user/m/mmarcheg/ttHbb/run3/fullyhadronic/ntuples/multiple_wp_LMT_run3/output_all.coffea \
+                    -i "$COFFEA_DIR/output_all.coffea" \
                     --cfg "$cfg" \
                     -o "$output_dir" \
                     --ntuples "${BASE_DIR}/${dataset}/${subsample}/baseline/nominal/" \

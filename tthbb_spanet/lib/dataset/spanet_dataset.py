@@ -48,6 +48,7 @@ class SPANetDataset(Dataset):
         self.collection = self.cfg["collection"]
         self.targets = self.cfg["particles"]
         self.classification_targets = self.cfg["classification"]
+        self.spanet_output_scores = list(self.cfg["spanet_output"]) if "spanet_output" in self.cfg else None
 
     def select_fully_matched(self):
         '''Select only fully matched events.'''
@@ -94,6 +95,8 @@ class SPANetDataset(Dataset):
             self.file.create_group(f"{SpecialKey.Inputs.value}/{object}")
         for group in self.classification_targets:
             self.file.create_group(f"{SpecialKey.Classifications.value}/{group}")
+        if self.spanet_output_scores:
+            self.file.create_group("SPANET_OUTPUT")
 
     def _cap_jet_index(self, arr):
         """Replace jet indices >= njet_max with -1 (jet was truncated, treat as unmatched)."""
@@ -185,6 +188,24 @@ class SPANetDataset(Dataset):
         weights = df.event.weight
         print("Creating dataset: ", f"{SpecialKey.Weights.value}/weight")
         self.file.create_dataset(f"{SpecialKey.Weights.value}/weight", np.shape(weights), dtype='float32', data=weights)
+
+    def create_spanet_output(self, df):
+        '''Create SPANet output score datasets in the h5 file.'''
+        if "spanet_output" not in df.fields:
+            raise ValueError(
+                "spanet_output field not found in the parquet file. "
+                "Run SPANet inference before building the H5 dataset."
+            )
+        for score in self.spanet_output_scores:
+            if score not in df["spanet_output"].fields:
+                raise ValueError(
+                    f"SPANet score '{score}' not found in spanet_output. "
+                    f"Available: {list(df['spanet_output'].fields)}"
+                )
+            values = ak.to_numpy(df["spanet_output"][score])
+            dataset_name = f"SPANET_OUTPUT/{score}"
+            print("Creating dataset: ", dataset_name)
+            self.file.create_dataset(dataset_name, np.shape(values), dtype='float32', data=values)
 
     def create_inputs(self, df):
         '''Create the input arrays in the h5 file.'''
@@ -294,6 +315,8 @@ class SPANetDataset(Dataset):
             self.create_classifications(df)
             self.create_inputs(df)
             self.create_weights(df)
+            if self.spanet_output_scores:
+                self.create_spanet_output(df)
             print(self.file)
             self.print()
             self.file.close()
@@ -504,3 +527,18 @@ class SPANetDataset(Dataset):
 
         # Weights
         append("WEIGHTS/weight", ak.to_numpy(df.event.weight), np.float32)
+
+        # SPANet output scores
+        if self.spanet_output_scores:
+            if "spanet_output" not in df.fields:
+                raise ValueError(
+                    "spanet_output field not found in the parquet file. "
+                    "Run SPANet inference before building the H5 dataset."
+                )
+            for score in self.spanet_output_scores:
+                if score not in df["spanet_output"].fields:
+                    raise ValueError(
+                        f"SPANet score '{score}' not found in spanet_output. "
+                        f"Available: {list(df['spanet_output'].fields)}"
+                    )
+                append(f"SPANET_OUTPUT/{score}", ak.to_numpy(df["spanet_output"][score]), np.float32)

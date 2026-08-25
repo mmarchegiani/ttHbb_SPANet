@@ -1,10 +1,11 @@
-BASE_DIR="/eos/cms/store/group/phys_higgs/ttHbb/ntuples/fullyhadronic_ttH_export"
+BASE_DIR="/eos/cms/store/group/phys_higgs/ttHbb/ntuples/fullyhadronic_ttH_export-inference"
 PARQUET_DIR=$BASE_DIR/parquet
 H5_DIR=$BASE_DIR/h5
 
 mkdir -p $H5_DIR
 
-for YEAR in 2022_preEE 2022_postEE 2023_preBPix 2023_postBPix 2024
+#for YEAR in 2022_preEE 2022_postEE 2023_preBPix 2023_postBPix 2024
+for YEAR in 2024
 do
     FILES=(
         "$PARQUET_DIR"/output_QCD*$YEAR.parquet
@@ -26,5 +27,5 @@ do
 
     #printf '%s\n' "${FILES[@]}"
 
-    python -m tthbb_spanet.scripts.dataset.parquet_to_h5 --cfg parameters/h5_params/ttHbb_fully_hadronic/features_h5_classification.yaml -i "${FILES[@]}" -o $H5_DIR/output_$YEAR.h5
+    python -m tthbb_spanet.scripts.dataset.parquet_to_h5 --cfg parameters/h5_params/ttHbb_fully_hadronic/features_h5_inference.yaml -i "${FILES[@]}" -o $H5_DIR/output_$YEAR.h5
 done

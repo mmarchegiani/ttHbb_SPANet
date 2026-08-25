@@ -1,0 +1,33 @@
+#description: "Features for jet-parton assignment training in ttHbb fully hadronic channel, Run 2 NanoAODv9 signal-only export"
+input:
+  Jet: [MASK, pt, eta, phi, btag, btag_L, btag_M, btag_T]
+  Met: [pt, phi]
+  Event: [ht]
+
+collection:
+  Jet: JetGood
+  Met: PuppiMET
+
+particles: [t1, t2, h]
+
+# Target daughter -> JetGoodMatched provenance mapping is hardcoded in
+# tthbb_spanet/lib/dataset/spanet_dataset.py (create_targets/_append_chunk); kept here for documentation only.
+target_definitions:
+  t1:
+    q1: 5
+    q2: 5
+    b: 2
+  t2:
+    q1: 6
+    q2: 6
+    b: 3
+  h:
+    b1: 1
+    b2: 1
+
+mapping_sample:
+  TTH_Hto2B: tthbb
+
+classification: {}
+
+test_size: 0.2

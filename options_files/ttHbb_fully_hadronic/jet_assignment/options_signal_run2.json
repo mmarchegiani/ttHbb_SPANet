@@ -64,5 +64,5 @@
     "verbose_output": true,
     "usable_gpus": "",
     "trial_time": "",
-    "trial_output_dir": "/tmp/mmarcheg/ttHbb_SPANet"
+    "trial_output_dir": "/tmp/mmarcheg/ttHbb_SPANet/jet_assignement"
 }

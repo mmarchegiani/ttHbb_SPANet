@@ -1,0 +1,2 @@
+python scripts/submit_to_condor.py --cfg jobs/config/jet_assignment.yaml -of options_files/ttHbb_fully_hadronic/jet_assignment/options_signal_run2.json -l /eos/user/m/mmarcheg/ttHbb/4b/run2/models/jet_assignment
+python scripts/submit_to_condor.py --cfg jobs/config/jet_assignment_nobtag.yaml -of options_files/ttHbb_fully_hadronic/jet_assignment/options_signal_run2.json -l /eos/user/m/mmarcheg/ttHbb/4b/run2/models/jet_assignment
